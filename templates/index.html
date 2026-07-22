@@ -317,10 +317,14 @@ function renderActive(ac) {
   const altStr = ac.altitude_ft != null ? `${Math.round(ac.altitude_ft)} ft` : '–';
   const gsStr = ac.groundspeed_kt != null ? `${Math.round(ac.groundspeed_kt)} kt` : '–';
   const distStr = ac.distance_km != null ? `${ac.distance_km} km` : '–';
+  const squawkStr = ac.squawk || '–';
+  const squawkIsEmergency = ac.squawk && EMERGENCY_SQUAWKS[ac.squawk];
+  const squawkStyle = squawkIsEmergency ? ' style="color:#ff3b3b;font-weight:800;"' : '';
   html += '<div class="metrics">';
   html += `<div><div class="metric-value">${altStr}</div><div class="metric-label">Høyde</div></div>`;
   html += `<div><div class="metric-value">${gsStr}</div><div class="metric-label">Fart</div></div>`;
   html += `<div><div class="metric-value">${distStr}</div><div class="metric-label">Avstand</div></div>`;
+  html += `<div><div class="metric-value"${squawkStyle}>${squawkStr}</div><div class="metric-label">Squawk</div></div>`;
   html += '</div>';
 
   document.getElementById('content').innerHTML = html;
