@@ -1,0 +1,6 @@
+venv/
+__pycache__/
+*.pyc
+/var/lib/skywatch/
+.DS_Store
+skywatch.service
