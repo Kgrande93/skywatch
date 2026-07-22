@@ -1,5 +1,5 @@
 [Unit]
-Description=Skywatch - siste fly fra antennen
+Description=Skywatch - last aircraft seen by the antenna
 After=network.target
 
 [Service]
