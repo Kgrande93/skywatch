@@ -201,6 +201,21 @@
     0%, 100% { background: #b00000; }
     50% { background: #ff2020; }
   }
+  .rotate-progress-track {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background: rgba(255,255,255,0.06);
+    display: none;
+  }
+  .rotate-progress-track.visible { display: block; }
+  .rotate-progress-bar {
+    height: 100%;
+    width: 100%;
+    background: rgba(255,255,255,0.25);
+  }
 </style>
 </head>
 <body>
@@ -212,6 +227,9 @@
     <div id="intro" class="intro"></div>
     <div id="content"></div>
     <div id="dots" class="dots"></div>
+  </div>
+  <div id="rotateProgressTrack" class="rotate-progress-track">
+    <div id="rotateProgressBar" class="rotate-progress-bar"></div>
   </div>
 
 <script>
@@ -318,6 +336,25 @@ function renderDots() {
     `<span class="dot ${ac.hex === currentHex ? 'on' : ''}"></span>`).join('');
 }
 
+function updateProgressVisibility() {
+  const track = document.getElementById('rotateProgressTrack');
+  if (!track) return;
+  if (currentList.length > 1) track.classList.add('visible');
+  else track.classList.remove('visible');
+}
+
+function restartProgressBar() {
+  const bar = document.getElementById('rotateProgressBar');
+  if (!bar) return;
+  updateProgressVisibility();
+  if (currentList.length <= 1) return;
+  bar.style.transition = 'none';
+  bar.style.width = '100%';
+  void bar.offsetWidth; // force reflow so the transition below actually restarts
+  bar.style.transition = `width ${ROTATE_MS}ms linear`;
+  bar.style.width = '0%';
+}
+
 function showCurrent() {
   if (currentList.length === 0) return;
   let ac = currentList.find(a => a.hex === currentHex);
@@ -332,8 +369,15 @@ function showCurrent() {
 }
 
 function updateList(list) {
+  const wasRotating = currentList.length > 1;
   currentList = list;
   showCurrent();
+  const isRotatingNow = currentList.length > 1;
+  if (!wasRotating && isRotatingNow) {
+    restartProgressBar();
+  } else {
+    updateProgressVisibility();
+  }
 }
 
 // Runs continuously from page load, independent of polling/data changes -
@@ -345,6 +389,7 @@ setInterval(() => {
     const nextIdx = idx === -1 ? 0 : (idx + 1) % currentList.length;
     currentHex = currentList[nextIdx].hex;
     showCurrent();
+    restartProgressBar();
   }
 }, ROTATE_MS);
 
@@ -368,6 +413,7 @@ function render(data) {
     currentList = [];
     currentHex = null;
     document.getElementById('dots').innerHTML = '';
+    document.getElementById('rotateProgressTrack').classList.remove('visible');
     const ac = data.last;
     dot.className = 'status-dot idle';
     label.textContent = 'Ingen aktiv forbindelse';
@@ -402,6 +448,7 @@ function render(data) {
   } else {
     currentList = [];
     currentHex = null;
+    document.getElementById('rotateProgressTrack').classList.remove('visible');
     dot.className = 'status-dot idle';
     label.textContent = 'Ingen data ennå';
     intro.textContent = '';
