@@ -22,6 +22,7 @@ RECEIVER_LON = float(os.environ.get("RECEIVER_LON", "0"))  # set your antenna's 
 MAX_RANGE_KM = float(os.environ.get("MAX_RANGE_KM", "70"))
 POLL_INTERVAL_SECONDS = int(os.environ.get("POLL_INTERVAL_SECONDS", "5"))
 STATE_FILE = os.environ.get("STATE_FILE", "/var/lib/skywatch/last_seen.json")
+DISTANCE_LOG_FILE = os.environ.get("DISTANCE_LOG_FILE", "/var/lib/skywatch/distance_log.jsonl")
 ADSBDB_BASE = os.environ.get("ADSBDB_BASE", "https://api.adsbdb.com/v0")
 AIRHEX_APIKEY = os.environ.get("AIRHEX_APIKEY", "")  # optional, blank = free/watermarked tier
 ADSBDB_CACHE_TTL = int(os.environ.get("ADSBDB_CACHE_TTL_SECONDS", str(6 * 3600)))
@@ -42,6 +43,7 @@ _state = {
 }
 _callsign_cache = {}  # callsign -> (expiry_ts, adsbdb_response_or_None)
 _aircraft_cache = {}  # hex -> (expiry_ts, adsbdb_response_or_None)
+_max_distance_by_hex = {}  # hex -> farthest distance_km ever recorded for that aircraft
 AIRCRAFT_CACHE_TTL = int(os.environ.get("AIRCRAFT_CACHE_TTL_SECONDS", str(30 * 24 * 3600)))  # registration barely changes
 
 
@@ -74,6 +76,57 @@ def save_state_file():
             json.dump(_state["last"], f)
     except Exception as e:
         log.warning("Could not save state file: %s", e)
+
+
+def load_distance_log():
+    """Rebuild the max-distance-per-aircraft table from the log file on
+    disk, so records survive restarts."""
+    try:
+        with open(DISTANCE_LOG_FILE, "r") as f:
+            count = 0
+            for line in f:
+                try:
+                    rec = json.loads(line)
+                except Exception:
+                    continue
+                hexid, dist = rec.get("hex"), rec.get("distance_km")
+                if hexid and dist is not None:
+                    if hexid not in _max_distance_by_hex or dist > _max_distance_by_hex[hexid]:
+                        _max_distance_by_hex[hexid] = dist
+                    count += 1
+        log.info("Loaded distance log: %d records, %d distinct aircraft", count, len(_max_distance_by_hex))
+    except FileNotFoundError:
+        log.info("No existing distance log at %s, starting fresh", DISTANCE_LOG_FILE)
+    except Exception as e:
+        log.warning("Could not load distance log: %s", e)
+
+
+def record_distance(enriched):
+    """Append a line to the distance log only when this aircraft (by hex)
+    has set a new farthest-seen distance record."""
+    hexid = enriched.get("hex")
+    dist = enriched.get("distance_km")
+    if not hexid or dist is None:
+        return
+    prev = _max_distance_by_hex.get(hexid)
+    if prev is not None and dist <= prev:
+        return
+    _max_distance_by_hex[hexid] = dist
+    rec = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "hex": hexid,
+        "callsign": enriched.get("callsign"),
+        "flight": enriched.get("flight_iata") or enriched.get("flight_icao"),
+        "registration": enriched.get("registration"),
+        "distance_km": dist,
+        "altitude_ft": enriched.get("altitude_ft"),
+    }
+    try:
+        os.makedirs(os.path.dirname(DISTANCE_LOG_FILE), exist_ok=True)
+        with open(DISTANCE_LOG_FILE, "a") as f:
+            f.write(json.dumps(rec) + "\n")
+    except Exception as e:
+        log.warning("Could not write distance log: %s", e)
 
 
 def lookup_callsign(callsign):
@@ -214,6 +267,7 @@ def enrich(ac):
 
 def poll_loop():
     load_state_file()
+    load_distance_log()
     while True:
         try:
             poll_once()
@@ -240,6 +294,21 @@ def poll_once():
         if not isinstance(alt, (int, float)):  # skips 'ground' and missing altitude (likely bad decode)
             continue
         dist = haversine_km(RECEIVER_LAT, RECEIVER_LON, lat, lon)
+
+        # Log every aircraft's farthest-seen distance regardless of the
+        # display range cutoff below - this is how you discover the
+        # antenna's true range even beyond the current MAX_RANGE_KM setting.
+        # Cheap (no API calls) since it doesn't go through enrich().
+        record_distance({
+            "hex": ac.get("hex"),
+            "callsign": callsign,
+            "flight_iata": None,
+            "flight_icao": None,
+            "registration": None,
+            "distance_km": round(dist, 1),
+            "altitude_ft": alt,
+        })
+
         if dist <= MAX_RANGE_KM:
             candidates.append((dist, ac))
 
@@ -278,6 +347,27 @@ def api_status():
             "last": _state["last"],
             "server_time": datetime.now(timezone.utc).isoformat(),
         })
+
+
+@app.route("/api/range-log")
+def api_range_log():
+    """Every aircraft's farthest recorded distance, sorted farthest first -
+    use this to figure out your antenna's real range and tune MAX_RANGE_KM."""
+    records = []
+    try:
+        with open(DISTANCE_LOG_FILE, "r") as f:
+            latest_by_hex = {}
+            for line in f:
+                try:
+                    rec = json.loads(line)
+                except Exception:
+                    continue
+                if rec.get("hex"):
+                    latest_by_hex[rec["hex"]] = rec  # last line per hex = farthest (only written on new records)
+            records = sorted(latest_by_hex.values(), key=lambda r: r.get("distance_km", 0), reverse=True)
+    except FileNotFoundError:
+        pass
+    return jsonify(records)
 
 
 if __name__ == "__main__":

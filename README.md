@@ -68,6 +68,20 @@ tier without an API key — works, but may carry a small watermark. If you
 have a free AirHex API key, set `AIRHEX_APIKEY` as an environment variable
 and the URL automatically switches to the signed, watermark-free variant.
 
+## Finding your antenna's real range
+
+Every aircraft's farthest-seen distance (regardless of `MAX_RANGE_KM`) is
+logged to `/var/lib/skywatch/distance_log.jsonl` - one line per new
+distance record for that aircraft. Check it any time with:
+
+```bash
+curl -s http://127.0.0.1:5000/api/range-log | python3 -m json.tool
+```
+
+This shows every aircraft sorted farthest-first, so you can see your
+antenna's actual range and tune `MAX_RANGE_KM` to match reality instead of
+guessing.
+
 ## Limitations
 
 - "Estimated landing" is NOT pulled from a real schedule — it's distance

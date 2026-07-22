@@ -69,6 +69,10 @@
     justify-content: center;
     gap: clamp(20px, 4vw, 64px);
     text-align: left;
+    max-width: 100%;
+  }
+  .header > div:last-child {
+    min-width: 0;
   }
   .logo-box {
     width: clamp(140px, 22vw, 400px);
@@ -88,11 +92,11 @@
     object-fit: contain;
   }
   .flight-number {
-    font-size: clamp(34px, 9vw, 160px);
     font-weight: 700;
     color: #fff;
     letter-spacing: 0.5px;
     line-height: 1.1;
+    overflow-wrap: break-word;
   }
   .airline-name {
     font-size: clamp(15px, 3vw, 46px);
@@ -241,10 +245,9 @@ function renderActive(ac) {
   }
   html += '</div>';
   html += '<div>';
-  html += `<div class="flight-number">${flightLabel(ac)}</div>`;
-  if (ac.airline_name) html += `<div class="airline-name">${ac.airline_name}</div>`;
-  const regParts = [ac.registration, ac.aircraft_type].filter(Boolean);
-  if (regParts.length) html += `<div class="airline-name">${regParts.join(' · ')}</div>`;
+  html += `<div class="flight-number" id="flightNumberEl">${flightLabel(ac)}</div>`;
+  const subParts = [ac.airline_name, ac.registration, ac.aircraft_type].filter(Boolean);
+  if (subParts.length) html += `<div class="airline-name">${subParts.join(' · ')}</div>`;
   html += '</div>';
   html += '</div>';
 
@@ -258,6 +261,16 @@ function renderActive(ac) {
   html += '</div>';
 
   document.getElementById('content').innerHTML = html;
+
+  const label = flightLabel(ac);
+  const numEl = document.getElementById('flightNumberEl');
+  if (numEl) {
+    // Longer callsigns get a smaller max size so they don't overflow the
+    // screen width - clamp() alone doesn't account for character count.
+    const vwMax = label.length <= 4 ? 9 : label.length <= 6 ? 7 : 5.5;
+    const pxMax = label.length <= 4 ? 160 : label.length <= 6 ? 120 : 90;
+    numEl.style.fontSize = `clamp(28px, ${vwMax}vw, ${pxMax}px)`;
+  }
 }
 
 function renderDots() {
