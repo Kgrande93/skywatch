@@ -92,16 +92,19 @@
     object-fit: contain;
   }
   .flight-number {
+    font-size: clamp(28px, 6vw, 90px);
     font-weight: 700;
     color: #fff;
     letter-spacing: 0.5px;
     line-height: 1.1;
     overflow-wrap: break-word;
+    min-height: 1.1em;
   }
   .airline-name {
     font-size: clamp(15px, 3vw, 46px);
     color: var(--muted);
     margin-top: 6px;
+    min-height: 1.3em;
   }
   .divider {
     height: 1px;
@@ -112,6 +115,7 @@
     font-size: clamp(18px, 3.6vw, 56px);
     color: #fff;
     text-align: center;
+    min-height: 1.3em;
   }
   .status-line {
     font-size: clamp(15px, 2.6vw, 40px);
@@ -124,6 +128,10 @@
     justify-content: center;
     gap: clamp(32px, 6vw, 100px);
     margin-top: clamp(22px, 5vh, 72px);
+    min-height: 5em;
+  }
+  .metrics > div {
+    min-width: 5em;
   }
   .metric-value { font-size: clamp(20px, 4vw, 64px); font-weight: 600; color: #fff; text-align: center; }
   .metric-label { font-size: clamp(11px, 1.8vw, 28px); color: var(--muted); text-transform: uppercase; margin-top: 6px; text-align: center; }
@@ -261,16 +269,6 @@ function renderActive(ac) {
   html += '</div>';
 
   document.getElementById('content').innerHTML = html;
-
-  const label = flightLabel(ac);
-  const numEl = document.getElementById('flightNumberEl');
-  if (numEl) {
-    // Longer callsigns get a smaller max size so they don't overflow the
-    // screen width - clamp() alone doesn't account for character count.
-    const vwMax = label.length <= 4 ? 9 : label.length <= 6 ? 7 : 5.5;
-    const pxMax = label.length <= 4 ? 160 : label.length <= 6 ? 120 : 90;
-    numEl.style.fontSize = `clamp(28px, ${vwMax}vw, ${pxMax}px)`;
-  }
 }
 
 function renderDots() {
