@@ -72,12 +72,12 @@
     justify-content: center;
     gap: clamp(20px, 4vw, 64px);
     text-align: left;
-    max-width: 100%;
+    width: 100%;
     min-height: clamp(56px, 8.8vw, 160px);
   }
   .header > div:last-child {
-    min-width: 0;
-    max-width: 65%;
+    width: clamp(220px, 42vw, 760px);
+    flex-shrink: 0;
   }
   .logo-box {
     width: clamp(140px, 22vw, 400px);
@@ -152,16 +152,22 @@
     justify-content: center;
     gap: clamp(32px, 6vw, 100px);
     margin-top: clamp(22px, 5vh, 72px);
-    height: 5em;
+    height: clamp(70px, 11vw, 180px);
   }
   .metrics > div {
-    width: 5em;
+    width: clamp(90px, 15vw, 240px);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
   }
-  .metric-value { font-size: clamp(20px, 4vw, 64px); font-weight: 600; color: #fff; text-align: center; }
+  .metric-value {
+    font-size: clamp(20px, 4vw, 64px);
+    font-weight: 600;
+    color: #fff;
+    text-align: center;
+    white-space: nowrap;
+  }
   .metric-label { font-size: clamp(11px, 1.8vw, 28px); color: var(--muted); text-transform: uppercase; margin-top: 6px; text-align: center; }
   .idle-text {
     font-size: clamp(17px, 3.6vw, 52px);
