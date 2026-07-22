@@ -243,6 +243,8 @@ function renderActive(ac) {
   html += '<div>';
   html += `<div class="flight-number">${flightLabel(ac)}</div>`;
   if (ac.airline_name) html += `<div class="airline-name">${ac.airline_name}</div>`;
+  const regParts = [ac.registration, ac.aircraft_type].filter(Boolean);
+  if (regParts.length) html += `<div class="airline-name">${regParts.join(' · ')}</div>`;
   html += '</div>';
   html += '</div>';
 

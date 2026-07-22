@@ -41,6 +41,8 @@ _state = {
     "last": None,          # last known aircraft + timestamp, enriched, survives restarts
 }
 _callsign_cache = {}  # callsign -> (expiry_ts, adsbdb_response_or_None)
+_aircraft_cache = {}  # hex -> (expiry_ts, adsbdb_response_or_None)
+AIRCRAFT_CACHE_TTL = int(os.environ.get("AIRCRAFT_CACHE_TTL_SECONDS", str(30 * 24 * 3600)))  # registration barely changes
 
 
 def haversine_km(lat1, lon1, lat2, lon2):
@@ -94,6 +96,28 @@ def lookup_callsign(callsign):
     return result
 
 
+def lookup_aircraft(hex_code):
+    """Look up registration/type via ADSBdb, with a long-lived cache since
+    an aircraft's registration essentially never changes."""
+    if not hex_code:
+        return None
+    now = time.time()
+    cached = _aircraft_cache.get(hex_code)
+    if cached and cached[0] > now:
+        return cached[1]
+
+    result = None
+    try:
+        r = requests.get(f"{ADSBDB_BASE}/aircraft/{hex_code}", timeout=4)
+        if r.status_code == 200:
+            result = r.json().get("response", {}).get("aircraft")
+    except Exception as e:
+        log.warning("ADSBdb aircraft lookup failed for %s: %s", hex_code, e)
+
+    _aircraft_cache[hex_code] = (now + AIRCRAFT_CACHE_TTL, result)
+    return result
+
+
 def airline_logo_url(airline):
     if not airline:
         return None
@@ -137,6 +161,10 @@ def enrich(ac):
     destination = route.get("destination") if route else None
     origin = route.get("origin") if route else None
 
+    aircraft_info = lookup_aircraft(ac.get("hex"))
+    registration = aircraft_info.get("registration") if aircraft_info else None
+    aircraft_type = aircraft_info.get("icao_type") if aircraft_info else None
+
     flight_iata_raw = route.get("callsign_iata") if route else None
     flight_icao_raw = route.get("callsign_icao") if route else None
     airline_iata = airline.get("iata") if airline else None
@@ -163,6 +191,8 @@ def enrich(ac):
         "flight_icao": with_carrier_prefix(flight_icao_raw, carrier_for_icao),
         "airline_name": airline.get("name") if airline else None,
         "airline_logo": airline_logo_url(airline),
+        "registration": registration,
+        "aircraft_type": aircraft_type,
         "origin": origin,
         "destination": destination,
         "altitude_ft": alt_ft,
