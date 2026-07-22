@@ -2,6 +2,7 @@ import json
 import logging
 import math
 import os
+import re
 import threading
 import time
 from datetime import datetime, timezone
@@ -26,6 +27,7 @@ AIRHEX_APIKEY = os.environ.get("AIRHEX_APIKEY", "")  # optional, blank = free/wa
 ADSBDB_CACHE_TTL = int(os.environ.get("ADSBDB_CACHE_TTL_SECONDS", str(6 * 3600)))
 MIN_GROUNDSPEED_FOR_ETA = 30  # knots; below this we don't trust an ETA estimate
 LANDED_THRESHOLD_KM = 8  # if remaining distance to destination is under this, call it landed
+VALID_CALLSIGN = re.compile(r"^[A-Z0-9]{3,8}$")  # rejects garbage like '@@@@@@@@'
 
 app = Flask(__name__)
 
@@ -180,7 +182,11 @@ def poll_once():
         lat, lon = ac.get("lat"), ac.get("lon")
         if lat is None or lon is None:
             continue
-        if not (ac.get("flight") or "").strip():
+        callsign = (ac.get("flight") or "").strip()
+        if not VALID_CALLSIGN.match(callsign):
+            continue
+        alt = ac.get("alt_baro")
+        if not isinstance(alt, (int, float)):  # skips 'ground' and missing altitude (likely bad decode)
             continue
         dist = haversine_km(RECEIVER_LAT, RECEIVER_LON, lat, lon)
         if dist <= MAX_RANGE_KM:
