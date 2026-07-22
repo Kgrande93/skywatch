@@ -29,36 +29,36 @@
     -webkit-user-select: none;
   }
   .card {
-    max-width: 900px;
+    max-width: 1600px;
     width: 100%;
   }
   .top-status {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    margin-bottom: 12px;
+    gap: 14px;
+    margin-bottom: 16px;
   }
   .status-dot {
-    width: clamp(9px, 1vw, 16px);
-    height: clamp(9px, 1vw, 16px);
+    width: clamp(9px, 1.2vw, 24px);
+    height: clamp(9px, 1.2vw, 24px);
     border-radius: 50%;
   }
   .status-dot.live { background: #37e07a; box-shadow: 0 0 8px #37e07a; }
   .status-dot.idle { background: var(--muted); }
   .status-label {
-    font-size: clamp(12px, 1.6vw, 22px);
+    font-size: clamp(12px, 2vw, 34px);
     letter-spacing: 0.05em;
     text-transform: uppercase;
     color: var(--muted);
   }
   .intro {
-    font-size: clamp(13px, 1.8vw, 24px);
+    font-size: clamp(13px, 2.4vw, 38px);
     color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 0.03em;
     text-align: center;
-    margin-bottom: clamp(24px, 4vh, 56px);
+    margin-bottom: clamp(24px, 5vh, 80px);
     max-width: 90%;
     margin-left: auto;
     margin-right: auto;
@@ -66,19 +66,19 @@
   .header {
     display: flex;
     align-items: center;
-    gap: clamp(20px, 3vw, 44px);
+    gap: clamp(20px, 4vw, 64px);
   }
   .logo-box {
-    width: clamp(140px, 16vw, 260px);
-    height: clamp(56px, 6.4vw, 104px);
+    width: clamp(140px, 22vw, 400px);
+    height: clamp(56px, 8.8vw, 160px);
     background: #fff;
-    border-radius: 8px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
     overflow: hidden;
-    padding: 6px 12px;
+    padding: 8px 16px;
   }
   .logo-box img {
     max-width: 90%;
@@ -86,52 +86,52 @@
     object-fit: contain;
   }
   .flight-number {
-    font-size: clamp(34px, 6vw, 96px);
+    font-size: clamp(34px, 9vw, 160px);
     font-weight: 700;
     color: #fff;
     letter-spacing: 0.5px;
     line-height: 1.1;
   }
   .airline-name {
-    font-size: clamp(15px, 2.2vw, 30px);
+    font-size: clamp(15px, 3vw, 46px);
     color: var(--muted);
-    margin-top: 4px;
+    margin-top: 6px;
   }
   .divider {
     height: 1px;
     background: rgba(255,255,255,0.12);
-    margin: clamp(22px, 4vh, 48px) 0;
+    margin: clamp(22px, 5vh, 72px) 0;
   }
   .route {
-    font-size: clamp(18px, 2.6vw, 36px);
+    font-size: clamp(18px, 3.6vw, 56px);
     color: #fff;
   }
   .status-line {
-    font-size: clamp(15px, 2vw, 26px);
+    font-size: clamp(15px, 2.6vw, 40px);
     color: var(--muted);
-    margin-top: 4px;
+    margin-top: 6px;
   }
   .metrics {
     display: flex;
-    gap: clamp(32px, 5vw, 72px);
-    margin-top: clamp(22px, 4vh, 48px);
+    gap: clamp(32px, 6vw, 100px);
+    margin-top: clamp(22px, 5vh, 72px);
   }
-  .metric-value { font-size: clamp(20px, 3vw, 44px); font-weight: 600; color: #fff; }
-  .metric-label { font-size: clamp(11px, 1.4vw, 20px); color: var(--muted); text-transform: uppercase; margin-top: 4px; }
+  .metric-value { font-size: clamp(20px, 4vw, 64px); font-weight: 600; color: #fff; }
+  .metric-label { font-size: clamp(11px, 1.8vw, 28px); color: var(--muted); text-transform: uppercase; margin-top: 6px; }
   .idle-text {
-    font-size: clamp(17px, 2.6vw, 36px);
+    font-size: clamp(17px, 3.6vw, 52px);
     color: #fff;
     line-height: 1.6;
   }
   .idle-text strong { color: var(--accent); }
-  .empty { color: var(--muted); font-size: clamp(15px, 2vw, 26px); text-align: center; }
+  .empty { color: var(--muted); font-size: clamp(15px, 2.4vw, 36px); text-align: center; }
   .dots {
     display: flex;
     justify-content: center;
-    gap: 8px;
-    margin-top: clamp(24px, 4vh, 48px);
+    gap: 10px;
+    margin-top: clamp(24px, 5vh, 64px);
   }
-  .dot { width: clamp(6px, 0.8vw, 12px); height: clamp(6px, 0.8vw, 12px); border-radius: 50%; background: rgba(255,255,255,0.2); }
+  .dot { width: clamp(6px, 1vw, 16px); height: clamp(6px, 1vw, 16px); border-radius: 50%; background: rgba(255,255,255,0.2); }
   .dot.on { background: var(--accent); }
 </style>
 </head>
@@ -161,9 +161,30 @@ function flightLabel(ac) {
   return ac.flight_iata || ac.flight_icao || ac.callsign || 'Ukjent';
 }
 
+const COUNTRY_NO = {
+  "Norway": "Norge", "Sweden": "Sverige", "Denmark": "Danmark", "Finland": "Finland",
+  "Iceland": "Island", "Germany": "Tyskland", "United Kingdom": "Storbritannia",
+  "France": "Frankrike", "Spain": "Spania", "Italy": "Italia", "Poland": "Polen",
+  "Netherlands": "Nederland", "Belgium": "Belgia", "Switzerland": "Sveits",
+  "Austria": "Østerrike", "Portugal": "Portugal", "Greece": "Hellas",
+  "Ireland": "Irland", "Croatia": "Kroatia", "Turkey": "Tyrkia",
+  "United States": "USA", "United Arab Emirates": "De forente arabiske emirater",
+  "Latvia": "Latvia", "Lithuania": "Litauen", "Estonia": "Estland",
+  "Czech Republic": "Tsjekkia", "Hungary": "Ungarn", "Slovakia": "Slovakia",
+  "Slovenia": "Slovenia", "Romania": "Romania", "Bulgaria": "Bulgaria",
+  "Morocco": "Marokko", "Thailand": "Thailand", "Egypt": "Egypt",
+};
+
 function airportLabel(ap) {
   if (!ap) return null;
-  return ap.iata_code || ap.municipality || ap.name;
+  const code = ap.iata_code;
+  const city = ap.municipality;
+  if (!code) return city || ap.name || null;
+  if (!city) return code;
+  const country = ap.country_name && ap.country_name !== "Norway"
+    ? (COUNTRY_NO[ap.country_name] || ap.country_name)
+    : null;
+  return country ? `${code} (${city}, ${country})` : `${code} (${city})`;
 }
 
 function renderActive(ac) {
