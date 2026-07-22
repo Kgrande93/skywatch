@@ -217,12 +217,17 @@ def poll_once():
             _state["aircraft_list"] = []
             return
 
+        # Sort by distance to pick the closest as the idle fallback, but
+        # display order is by hex (stable) so rotation doesn't reshuffle
+        # every poll just because planes' relative distances changed.
         candidates.sort(key=lambda c: c[0])
-        enriched_list = [enrich(ac) for _, ac in candidates]
+        closest_enriched = enrich(candidates[0][1])
+        display_order = sorted(candidates, key=lambda c: c[1].get("hex", ""))
+        enriched_list = [enrich(ac) for _, ac in display_order]
 
         _state["active"] = True
         _state["aircraft_list"] = enriched_list
-        _state["last"] = enriched_list[0]  # closest one becomes the fallback last-seen
+        _state["last"] = closest_enriched
 
     save_state_file()
 
