@@ -24,7 +24,6 @@
     justify-content: center;
     min-height: 100vh;
     padding: 4vh 4vw;
-    cursor: none;
     user-select: none;
     -webkit-user-select: none;
   }
@@ -421,7 +420,7 @@ async function poll() {
 }
 
 poll();
-setInterval(poll, 5000);
+setInterval(poll, 1000);
 
 // Keep the screen from sleeping on devices/browsers that support it
 // (Chrome/Android/ChromeOS). Re-request if the tab regains visibility,
