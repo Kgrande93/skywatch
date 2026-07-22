@@ -53,12 +53,15 @@
     color: var(--muted);
   }
   .intro {
-    font-size: clamp(13px, 2vw, 26px);
+    font-size: clamp(13px, 1.8vw, 24px);
     color: var(--muted);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.03em;
     text-align: center;
     margin-bottom: clamp(24px, 4vh, 56px);
+    max-width: 90%;
+    margin-left: auto;
+    margin-right: auto;
   }
   .header {
     display: flex;
@@ -239,8 +242,8 @@ function render(data) {
       ? `Aktiv forbindelse (${data.aircraft_list.length} fly)`
       : 'Aktiv forbindelse';
     intro.textContent = data.aircraft_list.length > 1
-      ? 'Dette er flyene du kan se på himmelen, hentet fra min ADS-B-antenne'
-      : 'Dette er flyet du kan se på himmelen, hentet fra min ADS-B-antenne';
+      ? 'Dette er flyene du kan se på himmelen, hentet fra min ADS\u2011B\u2011antenne'
+      : 'Dette er flyet du kan se på himmelen, hentet fra min ADS\u2011B\u2011antenne';
     updateList(data.aircraft_list);
 
   } else if (data.last) {
