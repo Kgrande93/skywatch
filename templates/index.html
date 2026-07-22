@@ -172,8 +172,7 @@
 <script>
 const ROTATE_MS = 6000;
 let currentList = [];
-let rotateIndex = 0;
-let rotateTimer = null;
+let currentHex = null;
 
 function fmtTime(epochSeconds) {
   const d = new Date(epochSeconds * 1000);
@@ -265,29 +264,36 @@ function renderDots() {
     dotsEl.innerHTML = '';
     return;
   }
-  dotsEl.innerHTML = currentList.map((_, i) =>
-    `<span class="dot ${i === rotateIndex ? 'on' : ''}"></span>`).join('');
+  dotsEl.innerHTML = currentList.map((ac) =>
+    `<span class="dot ${ac.hex === currentHex ? 'on' : ''}"></span>`).join('');
 }
 
 function showCurrent() {
   if (currentList.length === 0) return;
-  if (rotateIndex >= currentList.length) rotateIndex = 0;
-  renderActive(currentList[rotateIndex]);
+  let ac = currentList.find(a => a.hex === currentHex);
+  if (!ac) {
+    // currently shown plane is gone (left range) - fall back to the first
+    // one in the (stable, hex-sorted) list rather than waiting for a tick
+    ac = currentList[0];
+    currentHex = ac.hex;
+  }
+  renderActive(ac);
   renderDots();
 }
 
 function updateList(list) {
   currentList = list;
-  if (rotateIndex >= currentList.length) rotateIndex = 0;
   showCurrent();
 }
 
 // Runs continuously from page load, independent of polling/data changes -
-// this way a plane briefly dropping out and back in doesn't reset the
-// 6-second cadence.
+// this way list refreshes every 5s don't affect which plane is shown or
+// when the next switch happens; only this timer decides that.
 setInterval(() => {
   if (currentList.length > 1) {
-    rotateIndex = (rotateIndex + 1) % currentList.length;
+    const idx = currentList.findIndex(a => a.hex === currentHex);
+    const nextIdx = idx === -1 ? 0 : (idx + 1) % currentList.length;
+    currentHex = currentList[nextIdx].hex;
     showCurrent();
   }
 }, ROTATE_MS);
@@ -309,8 +315,8 @@ function render(data) {
     updateList(data.aircraft_list);
 
   } else if (data.last) {
-    if (rotateTimer) { clearInterval(rotateTimer); rotateTimer = null; }
     currentList = [];
+    currentHex = null;
     document.getElementById('dots').innerHTML = '';
     const ac = data.last;
     dot.className = 'status-dot idle';
@@ -344,7 +350,8 @@ function render(data) {
     content.innerHTML = html;
 
   } else {
-    if (rotateTimer) { clearInterval(rotateTimer); rotateTimer = null; }
+    currentList = [];
+    currentHex = null;
     dot.className = 'status-dot idle';
     label.textContent = 'Ingen data ennå';
     intro.textContent = '';
