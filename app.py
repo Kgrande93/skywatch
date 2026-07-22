@@ -144,16 +144,23 @@ def enrich(ac):
 
     def with_carrier_prefix(code, carrier):
         if not code:
-            return code
+            return None
         if code[0].isalpha():  # already has a carrier letter prefix
             return code
-        return f"{carrier}{code}" if carrier else code
+        if carrier:
+            return f"{carrier}{code}"
+        return None  # can't safely prefix it - let the frontend fall back to the raw callsign
+
+    # Fall back to the other code if one is missing (some airlines only
+    # have one of iata/icao populated in ADSBdb's data).
+    carrier_for_iata = airline_iata or airline_icao
+    carrier_for_icao = airline_icao or airline_iata
 
     entry = {
         "hex": ac.get("hex"),
         "callsign": callsign or None,
-        "flight_iata": with_carrier_prefix(flight_iata_raw, airline_iata),
-        "flight_icao": with_carrier_prefix(flight_icao_raw, airline_icao),
+        "flight_iata": with_carrier_prefix(flight_iata_raw, carrier_for_iata),
+        "flight_icao": with_carrier_prefix(flight_icao_raw, carrier_for_icao),
         "airline_name": airline.get("name") if airline else None,
         "airline_logo": airline_logo_url(airline),
         "origin": origin,
