@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flyradar</title>
+<style>
+  :root {
+    --bg: #0b0e14;
+    --card: #131722;
+    --accent: #00d4f0;
+    --text: #e8ecf1;
+    --muted: #8a93a6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 480px;
+    width: 100%;
+    text-align: center;
+  }
+  .status-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+  }
+  .status-dot.live { background: #37e07a; box-shadow: 0 0 8px #37e07a; }
+  .status-dot.idle { background: var(--muted); }
+  .status-label {
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+  .logo {
+    max-width: 180px;
+    max-height: 70px;
+    margin: 0 auto 16px;
+    display: block;
+  }
+  .flight-number {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .route {
+    font-size: 18px;
+    color: var(--text);
+    margin-top: 4px;
+  }
+  .airline {
+    color: var(--muted);
+    font-size: 14px;
+    margin-top: 4px;
+  }
+  .metrics {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-top: 24px;
+  }
+  .metric { text-align: center; }
+  .metric .value { font-size: 20px; font-weight: 600; }
+  .metric .label { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+  .idle-text {
+    font-size: 17px;
+    line-height: 1.5;
+    margin-top: 8px;
+  }
+  .idle-text strong { color: var(--accent); }
+  .empty {
+    color: var(--muted);
+    font-size: 15px;
+  }
+  .intro {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 16px;
+  }
+  .dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 20px;
+  }
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+  }
+  .dot.on { background: var(--accent); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div>
+      <span id="statusDot" class="status-dot idle"></span>
+      <span id="statusLabel" class="status-label">Kobler til …</span>
+    </div>
+    <div id="intro" class="intro"></div>
+    <div id="content"></div>
+    <div id="dots" class="dots"></div>
+  </div>
+
+<script>
+const ROTATE_MS = 6000;
+let currentList = [];
+let rotateIndex = 0;
+let rotateTimer = null;
+
+function fmtTime(epochSeconds) {
+  const d = new Date(epochSeconds * 1000);
+  return d.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' });
+}
+
+function flightLabel(ac) {
+  return ac.flight_iata || ac.flight_icao || ac.callsign || 'Ukjent';
+}
+
+function destLabel(ac) {
+  if (!ac.destination) return null;
+  return ac.destination.municipality || ac.destination.name || ac.destination.iata_code;
+}
+
+function renderActive(ac) {
+  const dest = destLabel(ac);
+  let html = '';
+  if (ac.airline_logo) {
+    html += `<img class="logo" src="${ac.airline_logo}" alt="${ac.airline_name || ''}" onerror="this.style.display='none'">`;
+  }
+  html += `<div class="flight-number">${flightLabel(ac)}</div>`;
+  if (dest) html += `<div class="route">til ${dest}</div>`;
+  if (ac.airline_name) html += `<div class="airline">${ac.airline_name}</div>`;
+  html += '<div class="metrics">';
+  if (ac.altitude_ft != null) html += `<div class="metric"><div class="value">${Math.round(ac.altitude_ft)} ft</div><div class="label">Høyde</div></div>`;
+  if (ac.groundspeed_kt != null) html += `<div class="metric"><div class="value">${Math.round(ac.groundspeed_kt)} kt</div><div class="label">Fart</div></div>`;
+  if (ac.distance_km != null) html += `<div class="metric"><div class="value">${ac.distance_km} km</div><div class="label">Avstand</div></div>`;
+  html += '</div>';
+  document.getElementById('content').innerHTML = html;
+}
+
+function renderDots() {
+  const dotsEl = document.getElementById('dots');
+  if (currentList.length <= 1) {
+    dotsEl.innerHTML = '';
+    return;
+  }
+  dotsEl.innerHTML = currentList.map((_, i) =>
+    `<span class="dot ${i === rotateIndex ? 'on' : ''}"></span>`).join('');
+}
+
+function showCurrent() {
+  if (currentList.length === 0) return;
+  if (rotateIndex >= currentList.length) rotateIndex = 0;
+  renderActive(currentList[rotateIndex]);
+  renderDots();
+}
+
+function startRotation(list) {
+  currentList = list;
+  if (rotateIndex >= currentList.length) rotateIndex = 0;
+  showCurrent();
+  if (rotateTimer) clearInterval(rotateTimer);
+  if (currentList.length > 1) {
+    rotateTimer = setInterval(() => {
+      rotateIndex = (rotateIndex + 1) % currentList.length;
+      showCurrent();
+    }, ROTATE_MS);
+  }
+}
+
+function render(data) {
+  const dot = document.getElementById('statusDot');
+  const label = document.getElementById('statusLabel');
+  const intro = document.getElementById('intro');
+  const content = document.getElementById('content');
+
+  if (data.active && data.aircraft_list && data.aircraft_list.length > 0) {
+    dot.className = 'status-dot live';
+    label.textContent = data.aircraft_list.length > 1
+      ? `Aktiv forbindelse (${data.aircraft_list.length} fly)`
+      : 'Aktiv forbindelse';
+    intro.textContent = 'Flyet du kan se på himmelen akkurat nå';
+    startRotation(data.aircraft_list);
+
+  } else if (data.last) {
+    if (rotateTimer) { clearInterval(rotateTimer); rotateTimer = null; }
+    currentList = [];
+    document.getElementById('dots').innerHTML = '';
+    const ac = data.last;
+    dot.className = 'status-dot idle';
+    label.textContent = 'Ingen aktiv forbindelse';
+    intro.textContent = 'Ingen fly synlig på himmelen nå';
+
+    const dest = destLabel(ac);
+    const seenTime = fmtTime(ac.seen_epoch);
+    let etaHtml = '';
+    if (ac.eta && !ac.eta.landed_estimate) {
+      etaHtml = ` &mdash; estimert landing ca. <strong>${fmtTime(ac.eta.epoch)}</strong>`;
+    } else if (ac.eta && ac.eta.landed_estimate) {
+      etaHtml = ` &mdash; trolig landet rundt <strong>${seenTime}</strong>`;
+    }
+
+    let html = '';
+    if (ac.airline_logo) {
+      html += `<img class="logo" src="${ac.airline_logo}" alt="${ac.airline_name || ''}" onerror="this.style.display='none'">`;
+    }
+    html += `<div class="idle-text">Siste fly som kunne sees på himmelen var <strong>${flightLabel(ac)}</strong>`;
+    if (dest) html += ` til <strong>${dest}</strong>`;
+    html += `, kl. ${seenTime}${etaHtml}.</div>`;
+    content.innerHTML = html;
+
+  } else {
+    if (rotateTimer) { clearInterval(rotateTimer); rotateTimer = null; }
+    dot.className = 'status-dot idle';
+    label.textContent = 'Ingen data ennå';
+    intro.textContent = '';
+    content.innerHTML = '<div class="empty">Venter på første fly …</div>';
+  }
+}
+
+async function poll() {
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json();
+    render(data);
+  } catch (e) {
+    document.getElementById('statusLabel').textContent = 'Ingen kontakt med server';
+  }
+}
+
+poll();
+setInterval(poll, 5000);
+</script>
+</body>
+</html>

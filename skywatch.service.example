@@ -1,0 +1,20 @@
+[Unit]
+Description=Skywatch - siste fly fra antennen
+After=network.target
+
+[Service]
+Type=simple
+User=skywatch
+WorkingDirectory=/opt/skywatch
+Environment=AIRCRAFT_JSON_URL=http://<fr24feed-vm-ip>/tar1090/data/aircraft.json
+Environment=RECEIVER_LAT=<your-antenna-latitude>
+Environment=RECEIVER_LON=<your-antenna-longitude>
+Environment=MAX_RANGE_KM=70
+Environment=STATE_FILE=/var/lib/skywatch/last_seen.json
+Environment=PORT=5000
+ExecStart=/opt/skywatch/venv/bin/python /opt/skywatch/app.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
