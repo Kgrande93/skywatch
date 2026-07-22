@@ -102,11 +102,11 @@ def airline_logo_url(airline):
         return None
     if AIRHEX_APIKEY:
         import hashlib
-        raw = f"{code}_200_200_r_{AIRHEX_APIKEY}"
+        raw = f"{code}_200_80_r_{AIRHEX_APIKEY}"
         md5 = hashlib.md5(raw.encode()).hexdigest()
-        return f"https://content.airhex.com/content/logos/airlines_{code}_200_200_r.png?md5apikey={md5}"
+        return f"https://content.airhex.com/content/logos/airlines_{code}_200_80_r.png?md5apikey={md5}"
     # Unauthenticated demo tier - works but may carry a small watermark.
-    return f"https://content.airhex.com/content/logos/airlines_{code}_200_200_r.png"
+    return f"https://content.airhex.com/content/logos/airlines_{code}_200_80_r.png"
 
 
 def estimate_eta(last_lat, last_lon, groundspeed_kt, destination, seen_at_epoch):
@@ -137,11 +137,23 @@ def enrich(ac):
     destination = route.get("destination") if route else None
     origin = route.get("origin") if route else None
 
+    flight_iata_raw = route.get("callsign_iata") if route else None
+    flight_icao_raw = route.get("callsign_icao") if route else None
+    airline_iata = airline.get("iata") if airline else None
+    airline_icao = airline.get("icao") if airline else None
+
+    def with_carrier_prefix(code, carrier):
+        if not code:
+            return code
+        if code[0].isalpha():  # already has a carrier letter prefix
+            return code
+        return f"{carrier}{code}" if carrier else code
+
     entry = {
         "hex": ac.get("hex"),
         "callsign": callsign or None,
-        "flight_iata": route.get("callsign_iata") if route else None,
-        "flight_icao": route.get("callsign_icao") if route else None,
+        "flight_iata": with_carrier_prefix(flight_iata_raw, airline_iata),
+        "flight_icao": with_carrier_prefix(flight_icao_raw, airline_icao),
         "airline_name": airline.get("name") if airline else None,
         "airline_logo": airline_logo_url(airline),
         "origin": origin,
