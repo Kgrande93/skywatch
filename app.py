@@ -167,6 +167,8 @@ def enrich(ac):
         "destination": destination,
         "altitude_ft": alt_ft,
         "groundspeed_kt": gs,
+        "squawk": ac.get("squawk"),
+        "emergency": ac.get("emergency") if ac.get("emergency") not in (None, "none") else None,
         "lat": lat,
         "lon": lon,
         "distance_km": round(haversine_km(RECEIVER_LAT, RECEIVER_LON, lat, lon), 1) if lat and lon else None,

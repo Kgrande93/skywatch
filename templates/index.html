@@ -66,7 +66,9 @@
   .header {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: clamp(20px, 4vw, 64px);
+    text-align: left;
   }
   .logo-box {
     width: clamp(140px, 22vw, 400px);
@@ -105,23 +107,27 @@
   .route {
     font-size: clamp(18px, 3.6vw, 56px);
     color: #fff;
+    text-align: center;
   }
   .status-line {
     font-size: clamp(15px, 2.6vw, 40px);
     color: var(--muted);
     margin-top: 6px;
+    text-align: center;
   }
   .metrics {
     display: flex;
+    justify-content: center;
     gap: clamp(32px, 6vw, 100px);
     margin-top: clamp(22px, 5vh, 72px);
   }
-  .metric-value { font-size: clamp(20px, 4vw, 64px); font-weight: 600; color: #fff; }
-  .metric-label { font-size: clamp(11px, 1.8vw, 28px); color: var(--muted); text-transform: uppercase; margin-top: 6px; }
+  .metric-value { font-size: clamp(20px, 4vw, 64px); font-weight: 600; color: #fff; text-align: center; }
+  .metric-label { font-size: clamp(11px, 1.8vw, 28px); color: var(--muted); text-transform: uppercase; margin-top: 6px; text-align: center; }
   .idle-text {
     font-size: clamp(17px, 3.6vw, 52px);
     color: #fff;
     line-height: 1.6;
+    text-align: center;
   }
   .idle-text strong { color: var(--accent); }
   .empty { color: var(--muted); font-size: clamp(15px, 2.4vw, 36px); text-align: center; }
@@ -133,6 +139,23 @@
   }
   .dot { width: clamp(6px, 1vw, 16px); height: clamp(6px, 1vw, 16px); border-radius: 50%; background: rgba(255,255,255,0.2); }
   .dot.on { background: var(--accent); }
+  .emergency-banner {
+    background: #b00000;
+    color: #fff;
+    font-weight: 700;
+    text-align: center;
+    padding: clamp(10px, 1.6vh, 20px);
+    border-radius: 8px;
+    margin-bottom: clamp(16px, 3vh, 32px);
+    font-size: clamp(15px, 2.4vw, 38px);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    animation: emergency-pulse 1.2s infinite;
+  }
+  @keyframes emergency-pulse {
+    0%, 100% { background: #b00000; }
+    50% { background: #ff2020; }
+  }
 </style>
 </head>
 <body>
@@ -159,6 +182,18 @@ function fmtTime(epochSeconds) {
 
 function flightLabel(ac) {
   return ac.flight_iata || ac.flight_icao || ac.callsign || 'Ukjent';
+}
+
+const EMERGENCY_SQUAWKS = {
+  '7500': 'KAPRING (SQUAWK 7500)',
+  '7600': 'RADIOSVIKT (SQUAWK 7600)',
+  '7700': 'NØDSITUASJON (SQUAWK 7700)',
+};
+
+function emergencyLabel(ac) {
+  if (ac.emergency) return `NØDSITUASJON (${ac.emergency.toUpperCase()})`;
+  if (ac.squawk && EMERGENCY_SQUAWKS[ac.squawk]) return EMERGENCY_SQUAWKS[ac.squawk];
+  return null;
 }
 
 const COUNTRY_NO = {
@@ -194,7 +229,13 @@ function renderActive(ac) {
   if (origin && dest) routeLine = `${origin} &rarr; ${dest}`;
   else if (dest) routeLine = `til ${dest}`;
 
-  let html = '<div class="header">';
+  let html = '';
+  const emergency = emergencyLabel(ac);
+  if (emergency) {
+    html += `<div class="emergency-banner">&#9888; ${emergency}</div>`;
+  }
+
+  html += '<div class="header">';
   html += '<div class="logo-box">';
   if (ac.airline_logo) {
     html += `<img src="${ac.airline_logo}" alt="${ac.airline_name || ''}" onerror="this.parentElement.style.display='none'">`;
