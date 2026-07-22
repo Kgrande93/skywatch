@@ -238,7 +238,9 @@ function render(data) {
     label.textContent = data.aircraft_list.length > 1
       ? `Aktiv forbindelse (${data.aircraft_list.length} fly)`
       : 'Aktiv forbindelse';
-    intro.textContent = 'Du kan nå se følgende fly på himmelen';
+    intro.textContent = data.aircraft_list.length > 1
+      ? 'Dette er flyene du kan se på himmelen, hentet fra min ADS-B-antenne'
+      : 'Dette er flyet du kan se på himmelen, hentet fra min ADS-B-antenne';
     updateList(data.aircraft_list);
 
   } else if (data.last) {
