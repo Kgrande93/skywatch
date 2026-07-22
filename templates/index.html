@@ -53,15 +53,18 @@
     color: var(--muted);
   }
   .intro {
-    font-size: clamp(13px, 2.4vw, 38px);
+    font-size: clamp(11px, 1.5vw, 20px);
     color: var(--muted);
     text-transform: uppercase;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.02em;
     text-align: center;
     margin-bottom: clamp(24px, 5vh, 80px);
-    max-width: 90%;
+    max-width: 95%;
     margin-left: auto;
     margin-right: auto;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .header {
     display: flex;
@@ -70,9 +73,11 @@
     gap: clamp(20px, 4vw, 64px);
     text-align: left;
     max-width: 100%;
+    min-height: clamp(56px, 8.8vw, 160px);
   }
   .header > div:last-child {
     min-width: 0;
+    max-width: 65%;
   }
   .logo-box {
     width: clamp(140px, 22vw, 400px);
@@ -87,8 +92,9 @@
     padding: 8px 16px;
   }
   .logo-box img {
-    max-width: 90%;
-    max-height: 90%;
+    height: 62%;
+    width: auto;
+    max-width: 92%;
     object-fit: contain;
   }
   .flight-number {
@@ -104,7 +110,22 @@
     font-size: clamp(15px, 3vw, 46px);
     color: var(--muted);
     margin-top: 6px;
-    min-height: 1.3em;
+    height: 1.3em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .reg-type {
+    font-size: clamp(13px, 2.2vw, 34px);
+    color: var(--muted);
+    opacity: 0.75;
+    margin-top: 2px;
+    height: 1.3em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
   }
   .divider {
     height: 1px;
@@ -115,7 +136,10 @@
     font-size: clamp(18px, 3.6vw, 56px);
     color: #fff;
     text-align: center;
-    min-height: 1.3em;
+    height: 1.3em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .status-line {
     font-size: clamp(15px, 2.6vw, 40px);
@@ -128,10 +152,14 @@
     justify-content: center;
     gap: clamp(32px, 6vw, 100px);
     margin-top: clamp(22px, 5vh, 72px);
-    min-height: 5em;
+    height: 5em;
   }
   .metrics > div {
-    min-width: 5em;
+    width: 5em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
   }
   .metric-value { font-size: clamp(20px, 4vw, 64px); font-weight: 600; color: #fff; text-align: center; }
   .metric-label { font-size: clamp(11px, 1.8vw, 28px); color: var(--muted); text-transform: uppercase; margin-top: 6px; text-align: center; }
@@ -254,18 +282,22 @@ function renderActive(ac) {
   html += '</div>';
   html += '<div>';
   html += `<div class="flight-number" id="flightNumberEl">${flightLabel(ac)}</div>`;
-  const subParts = [ac.airline_name, ac.registration, ac.aircraft_type].filter(Boolean);
-  if (subParts.length) html += `<div class="airline-name">${subParts.join(' · ')}</div>`;
+  html += `<div class="airline-name">${ac.airline_name || ''}</div>`;
+  const regType = [ac.registration, ac.aircraft_type].filter(Boolean).join(' · ');
+  html += `<div class="reg-type">${regType}</div>`;
   html += '</div>';
   html += '</div>';
 
   html += '<div class="divider"></div>';
-  if (routeLine) html += `<div class="route">${routeLine}</div>`;
+  html += `<div class="route">${routeLine || ''}</div>`;
 
+  const altStr = ac.altitude_ft != null ? `${Math.round(ac.altitude_ft)} ft` : '–';
+  const gsStr = ac.groundspeed_kt != null ? `${Math.round(ac.groundspeed_kt)} kt` : '–';
+  const distStr = ac.distance_km != null ? `${ac.distance_km} km` : '–';
   html += '<div class="metrics">';
-  if (ac.altitude_ft != null) html += `<div><div class="metric-value">${Math.round(ac.altitude_ft)} ft</div><div class="metric-label">Høyde</div></div>`;
-  if (ac.groundspeed_kt != null) html += `<div><div class="metric-value">${Math.round(ac.groundspeed_kt)} kt</div><div class="metric-label">Fart</div></div>`;
-  if (ac.distance_km != null) html += `<div><div class="metric-value">${ac.distance_km} km</div><div class="metric-label">Avstand</div></div>`;
+  html += `<div><div class="metric-value">${altStr}</div><div class="metric-label">Høyde</div></div>`;
+  html += `<div><div class="metric-value">${gsStr}</div><div class="metric-label">Fart</div></div>`;
+  html += `<div><div class="metric-value">${distStr}</div><div class="metric-label">Avstand</div></div>`;
   html += '</div>';
 
   document.getElementById('content').innerHTML = html;
