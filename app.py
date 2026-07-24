@@ -44,6 +44,7 @@ _state = {
 _callsign_cache = {}  # callsign -> (expiry_ts, adsbdb_response_or_None)
 _aircraft_cache = {}  # hex -> (expiry_ts, adsbdb_response_or_None)
 _max_distance_by_hex = {}  # hex -> farthest distance_km ever recorded for that aircraft
+_ground_since = {}  # hex -> epoch when this aircraft was first seen with ground status
 AIRCRAFT_CACHE_TTL = int(os.environ.get("AIRCRAFT_CACHE_TTL_SECONDS", str(30 * 24 * 3600)))  # registration barely changes
 
 
@@ -171,29 +172,32 @@ def lookup_aircraft(hex_code):
     return result
 
 
-# ICAO operator codes for airline groups with multiple national subsidiaries
-# that all fly under one universal brand (unlike e.g. Norwegian, where the
-# Swedish/Danish subsidiaries are worth seeing as distinct). Keyed by the
-# standardized ICAO code rather than matching free-text names, since the
-# code is reliable and the text isn't. Anything not in this table is shown
-# exactly as ADSBdb/the route database provides it.
+# ICAO operator codes mapped to a clean, consistent display name. This
+# guarantees a name shows up even when ADSBdb's free-text name is missing
+# or inconsistent for that specific code - keyed by the standardized ICAO
+# code rather than matching free-text, since the code is reliable and the
+# text isn't. Anything not in this table is shown exactly as ADSBdb/the
+# route database provides it.
 AIRLINE_CODE_NAMES = {
-    "WZZ": "Wizz Air",   # Wizz Air Hungary
-    "WAB": "Wizz Air",   # Wizz Air Malta
-    "WUK": "Wizz Air",   # Wizz Air UK
-    "WAZ": "Wizz Air",   # Wizz Air Abu Dhabi
+    "WZZ": "Wizz Air Hungary",
+    "WAB": "Wizz Air Malta",
+    "WUK": "Wizz Air UK",
+    "WAZ": "Wizz Air Abu Dhabi",
 }
 
 
 def airline_display_name(icao_code, fallback_name):
     if icao_code and icao_code.upper() in AIRLINE_CODE_NAMES:
         return AIRLINE_CODE_NAMES[icao_code.upper()]
-    # ADSBdb's registered_owner field is sometimes just the bare word
-    # "Norwegian" (too generic to be useful) rather than a real subsidiary
-    # name - expand only that exact case, leave genuinely distinct
-    # subsidiary names (Swedish, Danish, etc.) untouched.
-    if fallback_name and fallback_name.strip().lower() == "norwegian":
-        return "Norwegian Air Shuttle"
+    # ADSBdb's registered_owner field is sometimes just a bare, too-generic
+    # word rather than the real full name - expand only these exact cases,
+    # leave genuinely distinct names (subsidiaries, etc.) untouched.
+    if fallback_name:
+        bare = fallback_name.strip().lower()
+        if bare == "norwegian":
+            return "Norwegian Air Shuttle"
+        if bare in ("widerøe", "wideroe"):
+            return "Widerøe Flyveselskap"
     return fallback_name
 
 
@@ -328,20 +332,30 @@ def poll_once():
     r.raise_for_status()
     data = r.json()
     aircraft_list = data.get("aircraft", [])
+    now = time.time()
 
     candidates = []
+    ground_hexes_now = set()
     for ac in aircraft_list:
         lat, lon = ac.get("lat"), ac.get("lon")
+        callsign = (ac.get("flight") or "").strip()
+        hexid = ac.get("hex")
+
+        if ac.get("alt_baro") == "ground" and hexid and callsign and VALID_CALLSIGN.match(callsign):
+            ground_hexes_now.add(hexid)
+            if hexid not in _ground_since:
+                _ground_since[hexid] = now
+            continue
+
         if lat is None or lon is None:
             continue
-        callsign = (ac.get("flight") or "").strip()
         if not VALID_CALLSIGN.match(callsign):
             continue
 
         alt = ac.get("alt_baro")
         if not isinstance(alt, (int, float)):
             alt = ac.get("alt_geom")  # fall back for aircraft that only send geometric altitude
-        if not isinstance(alt, (int, float)):  # still nothing usable - skip (covers 'ground' too)
+        if not isinstance(alt, (int, float)):  # still nothing usable - skip
             continue
         dist = haversine_km(RECEIVER_LAT, RECEIVER_LON, lat, lon)
 
@@ -350,7 +364,7 @@ def poll_once():
         # antenna's true range even beyond the current MAX_RANGE_KM setting.
         # Cheap (no API calls) since it doesn't go through enrich().
         record_distance({
-            "hex": ac.get("hex"),
+            "hex": hexid,
             "callsign": callsign,
             "flight_iata": None,
             "flight_icao": None,
@@ -362,23 +376,42 @@ def poll_once():
         if dist <= MAX_RANGE_KM:
             candidates.append((dist, ac))
 
+    # Drop tracking for any hex no longer showing ground status - it
+    # disappears from the display immediately, no lingering timer.
+    for hexid in list(_ground_since.keys()):
+        if hexid not in ground_hexes_now:
+            del _ground_since[hexid]
+
+    ground_aircraft = [ac for ac in aircraft_list
+                       if ac.get("hex") in ground_hexes_now]
+
     with _lock:
-        if not candidates:
+        if not candidates and not ground_aircraft:
             _state["active"] = False
             _state["aircraft_list"] = []
             return
 
-        # Sort by distance to pick the closest as the idle fallback, but
-        # display order is by hex (stable) so rotation doesn't reshuffle
-        # every poll just because planes' relative distances changed.
-        candidates.sort(key=lambda c: c[0])
-        closest_enriched = enrich(candidates[0][1])
-        display_order = sorted(candidates, key=lambda c: c[1].get("hex", ""))
-        enriched_list = [enrich(ac) for _, ac in display_order]
+        enriched_list = []
+        closest_enriched = None
+        if candidates:
+            # Sort by distance to pick the closest as the idle fallback, but
+            # display order is by hex (stable) so rotation doesn't reshuffle
+            # every poll just because planes' relative distances changed.
+            candidates.sort(key=lambda c: c[0])
+            closest_enriched = enrich(candidates[0][1])
+            display_order = sorted(candidates, key=lambda c: c[1].get("hex", ""))
+            enriched_list = [enrich(ac) for _, ac in display_order]
+
+        for ac in sorted(ground_aircraft, key=lambda a: a.get("hex", "")):
+            entry = enrich(ac)
+            entry["landed"] = True
+            entry["landed_at_epoch"] = _ground_since.get(ac.get("hex"), now)
+            enriched_list.append(entry)
 
         _state["active"] = True
         _state["aircraft_list"] = enriched_list
-        _state["last"] = closest_enriched
+        if closest_enriched:
+            _state["last"] = closest_enriched
 
     save_state_file()
 

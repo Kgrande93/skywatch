@@ -365,14 +365,21 @@ function renderActive(ac) {
   html += '<div class="divider"></div>';
   html += `<div class="route">${routeLine || ''}</div>`;
 
-  let altStr = ac.altitude_ft != null ? `${Math.round(ac.altitude_ft)} ft` : '–';
-  if (ac.altitude_ft != null && ac.vertical_rate_fpm != null) {
-    if (ac.vertical_rate_fpm > 150) altStr += ' &#8593;';
-    else if (ac.vertical_rate_fpm < -150) altStr += ' &#8595;';
-    else altStr += ' &#8594;';
+  let altStr, gsStr, distStr;
+  if (ac.landed) {
+    altStr = `Landet ${fmtTime(ac.landed_at_epoch)}`;
+    gsStr = '–';
+    distStr = '–';
+  } else {
+    altStr = ac.altitude_ft != null ? `${Math.round(ac.altitude_ft)} ft` : '–';
+    if (ac.altitude_ft != null && ac.vertical_rate_fpm != null) {
+      if (ac.vertical_rate_fpm > 150) altStr += ' &#8593;';
+      else if (ac.vertical_rate_fpm < -150) altStr += ' &#8595;';
+      else altStr += ' &#8594;';
+    }
+    gsStr = ac.groundspeed_kt != null ? `${Math.round(ac.groundspeed_kt)} kt` : '–';
+    distStr = ac.distance_km != null ? `${ac.distance_km} km` : '–';
   }
-  const gsStr = ac.groundspeed_kt != null ? `${Math.round(ac.groundspeed_kt)} kt` : '–';
-  const distStr = ac.distance_km != null ? `${ac.distance_km} km` : '–';
   const squawkStr = ac.squawk || '–';
   const squawkIsEmergency = ac.squawk && EMERGENCY_SQUAWKS[ac.squawk];
   const squawkStyle = squawkIsEmergency ? ' style="color:#ff3b3b;font-weight:800;"' : '';
