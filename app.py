@@ -185,8 +185,19 @@ OWNER_NAME_NORMALIZATION = [
     ("ryanair", "Ryanair"),
     ("malta air", "Ryanair"),
     ("easyjet", "easyJet"),
-    ("norwegian air", "Norwegian"),
+    ("norwegian air", "Norwegian Air Shuttle"),
     ("vueling", "Vueling"),
+    ("scandinavian airlines", "Scandinavian Airlines"),
+    ("lufthansa", "Lufthansa"),
+    ("klm", "KLM"),
+    ("air france", "Air France"),
+    ("british airways", "British Airways"),
+    ("finnair", "Finnair"),
+    ("air baltic", "airBaltic"),
+    ("swiss international", "Swiss"),
+    ("austrian airlines", "Austrian Airlines"),
+    ("eurowings", "Eurowings"),
+    ("icelandair", "Icelandair"),
 ]
 
 
