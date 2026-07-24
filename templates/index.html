@@ -81,7 +81,7 @@
   .logo-box {
     width: clamp(140px, 22vw, 400px);
     height: clamp(56px, 8.8vw, 160px);
-    background: #fff;
+    background: rgba(255,255,255,0.08);
     border-radius: 10px;
     display: flex;
     align-items: center;
@@ -90,11 +90,19 @@
     overflow: hidden;
     padding: 8px 16px;
   }
+  .logo-box.has-logo {
+    background: #fff;
+  }
   .logo-box img {
     height: 62%;
     width: auto;
     max-width: 92%;
     object-fit: contain;
+  }
+  .logo-box .no-logo-icon {
+    width: 42%;
+    height: 42%;
+    opacity: 0.35;
   }
   .flight-number {
     font-size: clamp(28px, 6vw, 90px);
@@ -287,8 +295,10 @@ function airportLabel(ap) {
 function renderActive(ac) {
   const origin = airportLabel(ac.origin);
   const dest = airportLabel(ac.destination);
+  const sameAirport = ac.origin && ac.destination && ac.origin.iata_code === ac.destination.iata_code;
   let routeLine = null;
-  if (origin && dest) routeLine = `${origin} &rarr; ${dest}`;
+  if (sameAirport) routeLine = null;
+  else if (origin && dest) routeLine = `${origin} &rarr; ${dest}`;
   else if (dest) routeLine = `til ${dest}`;
 
   let html = '';
@@ -298,14 +308,16 @@ function renderActive(ac) {
   }
 
   html += '<div class="header">';
-  html += '<div class="logo-box">';
+  const planeIconSvg = '<svg class="no-logo-icon" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5"><path d="M12 2L2 14h6l1 8 3-4 3 4 1-8h6z"/></svg>';
   if (ac.airline_logo) {
-    html += `<img src="${ac.airline_logo}" alt="${ac.airline_name || ''}" onerror="this.parentElement.style.display='none'">`;
+    html += `<div class="logo-box has-logo"><img src="${ac.airline_logo}" alt="${ac.airline_name || ''}" onerror="this.parentElement.classList.remove('has-logo'); this.outerHTML='${planeIconSvg.replace(/'/g, "\\'")}';"></div>`;
+  } else {
+    html += `<div class="logo-box">${planeIconSvg}</div>`;
   }
-  html += '</div>';
   html += '<div>';
   html += `<div class="flight-number" id="flightNumberEl">${flightLabel(ac)}</div>`;
-  html += `<div class="airline-name">${ac.airline_name || ''}</div>`;
+  const nameLine = ac.operator_country ? `${ac.airline_name || ''} · ${ac.operator_country}` : (ac.airline_name || '');
+  html += `<div class="airline-name">${nameLine}</div>`;
   const regType = [ac.registration, ac.aircraft_type].filter(Boolean).join(' · ');
   html += `<div class="reg-type">${regType}</div>`;
   html += '</div>';
