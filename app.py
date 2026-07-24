@@ -29,6 +29,8 @@ ADSBDB_CACHE_TTL = int(os.environ.get("ADSBDB_CACHE_TTL_SECONDS", str(6 * 3600))
 MIN_GROUNDSPEED_FOR_ETA = 30  # knots; below this we don't trust an ETA estimate
 LANDED_THRESHOLD_KM = 8  # if remaining distance to destination is under this, call it landed
 VALID_CALLSIGN = re.compile(r"^[A-Z0-9]{3,8}$")  # rejects garbage like '@@@@@@@@'
+LANDED_ALT_THRESHOLD_FT = 2000  # last known altitude below this = likely just landed, not just out of range
+LANDED_DISPLAY_SECONDS = 60  # how long a "LANDET" badge stays up after a plane disappears
 
 app = Flask(__name__)
 
@@ -44,6 +46,9 @@ _state = {
 _callsign_cache = {}  # callsign -> (expiry_ts, adsbdb_response_or_None)
 _aircraft_cache = {}  # hex -> (expiry_ts, adsbdb_response_or_None)
 _max_distance_by_hex = {}  # hex -> farthest distance_km ever recorded for that aircraft
+_prev_active_hexes = set()  # hex set from the previous poll, to detect disappearances
+_prev_enriched_by_hex = {}  # hex -> last enriched entry seen while active
+_landed_cache = {}  # hex -> {"data": enriched entry with landed=True, "expires_at": epoch}
 AIRCRAFT_CACHE_TTL = int(os.environ.get("AIRCRAFT_CACHE_TTL_SECONDS", str(30 * 24 * 3600)))  # registration barely changes
 
 
@@ -171,6 +176,30 @@ def lookup_aircraft(hex_code):
     return result
 
 
+# Known airline groups whose registered_owner sometimes includes a
+# subsidiary/country suffix in ADSBdb's data (e.g. "Wizz Air Hungary Zrt",
+# "Ryanair DAC", "Malta Air") - normalized down to one universal brand name
+# regardless of which national subsidiary actually operates the aircraft.
+OWNER_NAME_NORMALIZATION = [
+    ("wizz air", "Wizz Air"),
+    ("ryanair", "Ryanair"),
+    ("malta air", "Ryanair"),
+    ("easyjet", "easyJet"),
+    ("norwegian air", "Norwegian"),
+    ("vueling", "Vueling"),
+]
+
+
+def normalize_owner_name(name):
+    if not name:
+        return name
+    lowered = name.lower()
+    for prefix, brand in OWNER_NAME_NORMALIZATION:
+        if lowered.startswith(prefix):
+            return brand
+    return name
+
+
 def airline_logo_url(airline):
     if not airline:
         return None
@@ -207,6 +236,7 @@ def enrich(ac):
     lat, lon = ac.get("lat"), ac.get("lon")
     alt_ft = ac.get("alt_baro") if isinstance(ac.get("alt_baro"), (int, float)) else ac.get("alt_geom")
     gs = ac.get("gs")
+    vrate = ac.get("baro_rate") if isinstance(ac.get("baro_rate"), (int, float)) else ac.get("geom_rate")
     now_epoch = time.time()
 
     route = lookup_callsign(callsign) if callsign else None
@@ -217,8 +247,9 @@ def enrich(ac):
     aircraft_info = lookup_aircraft(ac.get("hex"))
     registration = aircraft_info.get("registration") if aircraft_info else None
     aircraft_type = aircraft_info.get("icao_type") if aircraft_info else None
-    registered_owner = aircraft_info.get("registered_owner") if aircraft_info else None
+    registered_owner = normalize_owner_name(aircraft_info.get("registered_owner")) if aircraft_info else None
     owner_country = aircraft_info.get("registered_owner_country_name") if aircraft_info else None
+    registration_country_iso = aircraft_info.get("registered_owner_country_iso_name") if aircraft_info else None
 
     flight_iata_raw = route.get("callsign_iata") if route else None
     flight_icao_raw = route.get("callsign_icao") if route else None
@@ -253,14 +284,16 @@ def enrich(ac):
         "callsign": callsign or None,
         "flight_iata": with_carrier_prefix(flight_iata_raw, carrier_for_iata),
         "flight_icao": with_carrier_prefix(flight_icao_raw, carrier_for_icao),
-        "airline_name": (airline.get("name") if airline else None) or registered_owner,
+        "airline_name": normalize_owner_name(airline.get("name")) if airline else registered_owner,
         "airline_logo": airline_logo_url(logo_source),
         "registration": registration,
         "aircraft_type": aircraft_type,
+        "registration_country_iso": registration_country_iso,
         "operator_country": owner_country if not airline else None,
         "origin": origin,
         "destination": destination,
         "altitude_ft": alt_ft,
+        "vertical_rate_fpm": vrate,
         "groundspeed_kt": gs,
         "squawk": ac.get("squawk"),
         "emergency": ac.get("emergency") if ac.get("emergency") not in (None, "none") else None,
@@ -289,12 +322,15 @@ def poll_loop():
 
 
 def poll_once():
+    global _prev_active_hexes, _prev_enriched_by_hex
+
     r = requests.get(AIRCRAFT_JSON_URL, timeout=4)
     r.raise_for_status()
     data = r.json()
     aircraft_list = data.get("aircraft", [])
 
     candidates = []
+    now = time.time()
     for ac in aircraft_list:
         lat, lon = ac.get("lat"), ac.get("lon")
         if lat is None or lon is None:
@@ -302,8 +338,25 @@ def poll_once():
         callsign = (ac.get("flight") or "").strip()
         if not VALID_CALLSIGN.match(callsign):
             continue
-        alt = ac.get("alt_baro")
-        if not isinstance(alt, (int, float)):  # skips 'ground' and missing altitude (likely bad decode)
+
+        raw_alt = ac.get("alt_baro")
+        if raw_alt == "ground":
+            # Already on the ground the first time we see it (e.g. taxiing
+            # after landing) - show it as landed directly, distinct from the
+            # disappearance-based inference below. Only set expiry the first
+            # time so it doesn't keep re-extending while it sits/taxis.
+            hexid = ac.get("hex")
+            if hexid and hexid not in _landed_cache:
+                landed_entry = enrich(ac)
+                landed_entry["altitude_ft"] = 0
+                landed_entry["landed"] = True
+                _landed_cache[hexid] = {"data": landed_entry, "expires_at": now + LANDED_DISPLAY_SECONDS}
+            continue
+
+        alt = raw_alt
+        if not isinstance(alt, (int, float)):
+            alt = ac.get("alt_geom")  # fall back for aircraft that only send geometric altitude
+        if not isinstance(alt, (int, float)):  # still nothing usable - skip
             continue
         dist = haversine_km(RECEIVER_LAT, RECEIVER_LON, lat, lon)
 
@@ -324,23 +377,54 @@ def poll_once():
         if dist <= MAX_RANGE_KM:
             candidates.append((dist, ac))
 
+    current_hexes = {ac.get("hex") for _, ac in candidates}
+
+    # Any hex that was active last poll but isn't now: if its last known
+    # altitude was low, it likely just landed rather than simply going out
+    # of range - keep showing it with a "landed" badge for a while.
+    for hexid in _prev_active_hexes - current_hexes:
+        last = _prev_enriched_by_hex.get(hexid)
+        if not last:
+            continue
+        alt = last.get("altitude_ft")
+        if alt is not None and alt <= LANDED_ALT_THRESHOLD_FT:
+            landed_entry = dict(last)
+            landed_entry["landed"] = True
+            _landed_cache[hexid] = {"data": landed_entry, "expires_at": now + LANDED_DISPLAY_SECONDS}
+
+    # Prune expired landed entries, and any that reappeared as active again
+    for hexid in list(_landed_cache.keys()):
+        if hexid in current_hexes or _landed_cache[hexid]["expires_at"] < now:
+            del _landed_cache[hexid]
+
     with _lock:
-        if not candidates:
+        if not candidates and not _landed_cache:
             _state["active"] = False
             _state["aircraft_list"] = []
+            _prev_active_hexes = set()
+            _prev_enriched_by_hex = {}
             return
 
-        # Sort by distance to pick the closest as the idle fallback, but
-        # display order is by hex (stable) so rotation doesn't reshuffle
-        # every poll just because planes' relative distances changed.
-        candidates.sort(key=lambda c: c[0])
-        closest_enriched = enrich(candidates[0][1])
-        display_order = sorted(candidates, key=lambda c: c[1].get("hex", ""))
-        enriched_list = [enrich(ac) for _, ac in display_order]
+        if candidates:
+            # Sort by distance to pick the closest as the idle fallback, but
+            # display order is by hex (stable) so rotation doesn't reshuffle
+            # every poll just because planes' relative distances changed.
+            candidates.sort(key=lambda c: c[0])
+            closest_enriched = enrich(candidates[0][1])
+            display_order = sorted(candidates, key=lambda c: c[1].get("hex", ""))
+            enriched_list = [enrich(ac) for _, ac in display_order]
+            _state["last"] = closest_enriched
+        else:
+            enriched_list = []
+
+        landed_list = [entry["data"] for entry in _landed_cache.values()]
+        enriched_list = enriched_list + landed_list
 
         _state["active"] = True
         _state["aircraft_list"] = enriched_list
-        _state["last"] = closest_enriched
+
+    _prev_active_hexes = current_hexes
+    _prev_enriched_by_hex = {ac["hex"]: ac for ac in enriched_list if not ac.get("landed")} if candidates else {}
 
     save_state_file()
 
