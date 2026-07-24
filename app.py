@@ -188,6 +188,12 @@ AIRLINE_CODE_NAMES = {
 def airline_display_name(icao_code, fallback_name):
     if icao_code and icao_code.upper() in AIRLINE_CODE_NAMES:
         return AIRLINE_CODE_NAMES[icao_code.upper()]
+    # ADSBdb's registered_owner field is sometimes just the bare word
+    # "Norwegian" (too generic to be useful) rather than a real subsidiary
+    # name - expand only that exact case, leave genuinely distinct
+    # subsidiary names (Swedish, Danish, etc.) untouched.
+    if fallback_name and fallback_name.strip().lower() == "norwegian":
+        return "Norwegian Air Shuttle"
     return fallback_name
 
 
