@@ -20,7 +20,7 @@ AIRCRAFT_JSON_URL = os.environ.get("AIRCRAFT_JSON_URL", "http://127.0.0.1/tar109
 RECEIVER_LAT = float(os.environ.get("RECEIVER_LAT", "0"))  # set your antenna's actual latitude
 RECEIVER_LON = float(os.environ.get("RECEIVER_LON", "0"))  # set your antenna's actual longitude
 MAX_RANGE_KM = float(os.environ.get("MAX_RANGE_KM", "70"))
-POLL_INTERVAL_SECONDS = int(os.environ.get("POLL_INTERVAL_SECONDS", "5"))
+POLL_INTERVAL_SECONDS = int(os.environ.get("POLL_INTERVAL_SECONDS", "1"))
 STATE_FILE = os.environ.get("STATE_FILE", "/var/lib/skywatch/last_seen.json")
 DISTANCE_LOG_FILE = os.environ.get("DISTANCE_LOG_FILE", "/var/lib/skywatch/distance_log.jsonl")
 ADSBDB_BASE = os.environ.get("ADSBDB_BASE", "https://api.adsbdb.com/v0")
@@ -217,6 +217,8 @@ def enrich(ac):
     aircraft_info = lookup_aircraft(ac.get("hex"))
     registration = aircraft_info.get("registration") if aircraft_info else None
     aircraft_type = aircraft_info.get("icao_type") if aircraft_info else None
+    registered_owner = aircraft_info.get("registered_owner") if aircraft_info else None
+    owner_country = aircraft_info.get("registered_owner_country_name") if aircraft_info else None
 
     flight_iata_raw = route.get("callsign_iata") if route else None
     flight_icao_raw = route.get("callsign_icao") if route else None
@@ -242,10 +244,11 @@ def enrich(ac):
         "callsign": callsign or None,
         "flight_iata": with_carrier_prefix(flight_iata_raw, carrier_for_iata),
         "flight_icao": with_carrier_prefix(flight_icao_raw, carrier_for_icao),
-        "airline_name": airline.get("name") if airline else None,
+        "airline_name": (airline.get("name") if airline else None) or registered_owner,
         "airline_logo": airline_logo_url(airline),
         "registration": registration,
         "aircraft_type": aircraft_type,
+        "operator_country": owner_country if not airline else None,
         "origin": origin,
         "destination": destination,
         "altitude_ft": alt_ft,
