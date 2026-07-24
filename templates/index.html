@@ -113,6 +113,10 @@
     overflow-wrap: break-word;
     min-height: 1.1em;
   }
+  .flag-icon {
+    font-size: 0.4em;
+    vertical-align: middle;
+  }
   .airline-name {
     font-size: clamp(15px, 3vw, 46px);
     color: var(--muted);
@@ -335,12 +339,12 @@ function renderActive(ac) {
     html += `<div class="logo-box">${planeIconSvg}</div>`;
   }
   html += '<div>';
-  const flag = isoToFlagEmoji(ac.registration_country_iso);
-  const flightNumHtml = flag ? `${flag} ${flightLabel(ac)}` : flightLabel(ac);
-  html += `<div class="flight-number" id="flightNumberEl">${flightNumHtml}</div>`;
+  html += `<div class="flight-number" id="flightNumberEl">${flightLabel(ac)}</div>`;
   const nameLine = ac.operator_country ? `${ac.airline_name || ''} · ${ac.operator_country}` : (ac.airline_name || '');
   html += `<div class="airline-name">${nameLine}</div>`;
-  const regType = [ac.registration, ac.aircraft_type].filter(Boolean).join(' · ');
+  const flag = isoToFlagEmoji(ac.registration_country_iso);
+  const regWithFlag = flag && ac.registration ? `${flag} ${ac.registration}` : ac.registration;
+  const regType = [regWithFlag, ac.aircraft_type].filter(Boolean).join(' · ');
   html += `<div class="reg-type">${regType}</div>`;
   html += '</div>';
   html += '</div>';
@@ -352,6 +356,7 @@ function renderActive(ac) {
   if (ac.altitude_ft != null && ac.vertical_rate_fpm != null) {
     if (ac.vertical_rate_fpm > 150) altStr += ' &#8593;';
     else if (ac.vertical_rate_fpm < -150) altStr += ' &#8595;';
+    else altStr += ' &#8594;';
   }
   const gsStr = ac.groundspeed_kt != null ? `${Math.round(ac.groundspeed_kt)} kt` : '–';
   const distStr = ac.distance_km != null ? `${ac.distance_km} km` : '–';
