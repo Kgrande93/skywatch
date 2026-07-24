@@ -239,13 +239,22 @@ def enrich(ac):
     carrier_for_iata = airline_iata or airline_icao
     carrier_for_icao = airline_icao or airline_iata
 
+    # If there's no route/airline match (e.g. military or an operator not
+    # in the flightroute database), the aircraft lookup's operator flag
+    # code (e.g. "WZZ" for Wizz Air) can still get us a logo.
+    logo_source = airline
+    if not logo_source and aircraft_info:
+        flag_code = aircraft_info.get("registered_owner_operator_flag_code")
+        if flag_code:
+            logo_source = {"icao": flag_code, "iata": None}
+
     entry = {
         "hex": ac.get("hex"),
         "callsign": callsign or None,
         "flight_iata": with_carrier_prefix(flight_iata_raw, carrier_for_iata),
         "flight_icao": with_carrier_prefix(flight_icao_raw, carrier_for_icao),
         "airline_name": (airline.get("name") if airline else None) or registered_owner,
-        "airline_logo": airline_logo_url(airline),
+        "airline_logo": airline_logo_url(logo_source),
         "registration": registration,
         "aircraft_type": aircraft_type,
         "operator_country": owner_country if not airline else None,
