@@ -249,6 +249,23 @@ const ROTATE_MS = 10000;
 let currentList = [];
 let currentHex = null;
 
+const PLANE_ICON_SVG = '<svg class="no-logo-icon" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5"><path d="M12 2L2 14h6l1 8 3-4 3 4 1-8h6z"/></svg>';
+
+function handleLogoFailure(imgEl) {
+  const box = imgEl.closest('.logo-box');
+  if (box) {
+    box.classList.remove('has-logo');
+    box.innerHTML = PLANE_ICON_SVG;
+  }
+}
+
+function handleLogoLoad(imgEl) {
+  // Some APIs return a 200 OK with empty/invalid image data instead of a
+  // real HTTP error when a code isn't found - onerror never fires for that,
+  // so double-check the image actually decoded to real pixels.
+  if (imgEl.naturalWidth === 0) handleLogoFailure(imgEl);
+}
+
 function fmtTime(epochSeconds) {
   const d = new Date(epochSeconds * 1000);
   return d.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' });
@@ -329,11 +346,10 @@ function renderActive(ac) {
   }
 
   html += '<div class="header">';
-  const planeIconSvg = '<svg class="no-logo-icon" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5"><path d="M12 2L2 14h6l1 8 3-4 3 4 1-8h6z"/></svg>';
   if (ac.airline_logo) {
-    html += `<div class="logo-box has-logo"><img src="${ac.airline_logo}" alt="${ac.airline_name || ''}" onerror="this.parentElement.classList.remove('has-logo'); this.outerHTML='${planeIconSvg.replace(/'/g, "\\'")}';"></div>`;
+    html += `<div class="logo-box has-logo"><img src="${ac.airline_logo}" alt="${ac.airline_name || ''}" onerror="handleLogoFailure(this)" onload="handleLogoLoad(this)"></div>`;
   } else {
-    html += `<div class="logo-box">${planeIconSvg}</div>`;
+    html += `<div class="logo-box">${PLANE_ICON_SVG}</div>`;
   }
   html += '<div>';
   html += `<div class="flight-number" id="flightNumberEl">${flightLabel(ac)}</div>`;
@@ -349,16 +365,11 @@ function renderActive(ac) {
   html += '<div class="divider"></div>';
   html += `<div class="route">${routeLine || ''}</div>`;
 
-  let altStr;
-  if (ac.landed) {
-    altStr = 'Landet';
-  } else {
-    altStr = ac.altitude_ft != null ? `${Math.round(ac.altitude_ft)} ft` : '–';
-    if (ac.altitude_ft != null && ac.vertical_rate_fpm != null) {
-      if (ac.vertical_rate_fpm > 150) altStr += ' &#8593;';
-      else if (ac.vertical_rate_fpm < -150) altStr += ' &#8595;';
-      else altStr += ' &#8594;';
-    }
+  let altStr = ac.altitude_ft != null ? `${Math.round(ac.altitude_ft)} ft` : '–';
+  if (ac.altitude_ft != null && ac.vertical_rate_fpm != null) {
+    if (ac.vertical_rate_fpm > 150) altStr += ' &#8593;';
+    else if (ac.vertical_rate_fpm < -150) altStr += ' &#8595;';
+    else altStr += ' &#8594;';
   }
   const gsStr = ac.groundspeed_kt != null ? `${Math.round(ac.groundspeed_kt)} kt` : '–';
   const distStr = ac.distance_km != null ? `${ac.distance_km} km` : '–';
@@ -495,11 +506,11 @@ function render(data) {
     }
 
     let html = '<div class="header">';
-    html += '<div class="logo-box">';
     if (ac.airline_logo) {
-      html += `<img src="${ac.airline_logo}" alt="${ac.airline_name || ''}" onerror="this.parentElement.style.display='none'">`;
+      html += `<div class="logo-box has-logo"><img src="${ac.airline_logo}" alt="${ac.airline_name || ''}" onerror="handleLogoFailure(this)" onload="handleLogoLoad(this)"></div>`;
+    } else {
+      html += `<div class="logo-box">${PLANE_ICON_SVG}</div>`;
     }
-    html += '</div>';
     html += '<div>';
     html += `<div class="flight-number">${flightLabel(ac)}</div>`;
     if (ac.airline_name) html += `<div class="airline-name">${ac.airline_name}</div>`;
