@@ -36,7 +36,7 @@
     align-items: center;
     justify-content: center;
     gap: 14px;
-    margin-bottom: 16px;
+    margin-bottom: clamp(24px, 5vh, 80px);
   }
   .status-dot {
     width: clamp(9px, 1.2vw, 24px);
@@ -51,19 +51,23 @@
     text-transform: uppercase;
     color: var(--muted);
   }
-  .intro {
-    font-size: clamp(11px, 1.5vw, 20px);
+  .corner-label {
+    position: fixed;
+    bottom: clamp(12px, 2.2vh, 26px);
+    font-size: clamp(10px, 1.1vw, 16px);
     color: var(--muted);
-    text-transform: uppercase;
+    opacity: 0.55;
     letter-spacing: 0.02em;
-    text-align: center;
-    margin-bottom: clamp(24px, 5vh, 80px);
-    max-width: 95%;
-    margin-left: auto;
-    margin-right: auto;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    max-width: 42vw;
+    line-height: 1.4;
+  }
+  .corner-label.left {
+    left: clamp(14px, 2.5vw, 36px);
+    text-align: left;
+  }
+  .corner-label.right {
+    right: clamp(14px, 2.5vw, 36px);
+    text-align: right;
   }
   .header {
     display: flex;
@@ -236,10 +240,11 @@
       <span id="statusDot" class="status-dot idle"></span>
       <span id="statusLabel" class="status-label">Kobler til …</span>
     </div>
-    <div id="intro" class="intro"></div>
     <div id="content"></div>
     <div id="dots" class="dots"></div>
   </div>
+  <div class="corner-label left">Dette er flyene du kan se på Øvre Romerike nå.</div>
+  <div class="corner-label right">ADS-B-antenne er plassert i Åsgreina, Nannestad kommune.</div>
   <div id="rotateProgressTrack" class="rotate-progress-track">
     <div id="rotateProgressBar" class="rotate-progress-bar"></div>
   </div>
@@ -480,7 +485,6 @@ setInterval(() => {
 function render(data) {
   const dot = document.getElementById('statusDot');
   const label = document.getElementById('statusLabel');
-  const intro = document.getElementById('intro');
   const content = document.getElementById('content');
 
   if (data.active && data.aircraft_list && data.aircraft_list.length > 0) {
@@ -488,9 +492,6 @@ function render(data) {
     label.textContent = data.aircraft_list.length > 1
       ? `Aktiv forbindelse (${data.aircraft_list.length} fly)`
       : 'Aktiv forbindelse';
-    intro.textContent = data.aircraft_list.length > 1
-      ? 'Dette er flyene du kan se på himmelen, hentet fra min ADS\u2011B\u2011antenne'
-      : 'Dette er flyet du kan se på himmelen, hentet fra min ADS\u2011B\u2011antenne';
     updateList(data.aircraft_list);
 
   } else if (data.last) {
@@ -501,7 +502,6 @@ function render(data) {
     const ac = data.last;
     dot.className = 'status-dot idle';
     label.textContent = 'Ingen aktiv forbindelse';
-    intro.textContent = 'Ingen fly synlig på himmelen akkurat nå';
 
     const dest = airportLabel(ac.destination);
     const seenTime = fmtTime(ac.seen_epoch);
@@ -535,7 +535,6 @@ function render(data) {
     document.getElementById('rotateProgressTrack').classList.remove('visible');
     dot.className = 'status-dot idle';
     label.textContent = 'Ingen data ennå';
-    intro.textContent = '';
     content.innerHTML = '<div class="empty">Venter på første fly …</div>';
   }
 }
