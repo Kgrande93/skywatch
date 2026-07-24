@@ -185,9 +185,8 @@ OWNER_NAME_NORMALIZATION = [
     ("ryanair", "Ryanair"),
     ("malta air", "Ryanair"),
     ("easyjet", "easyJet"),
-    ("norwegian air", "Norwegian Air Shuttle"),
+    ("norwegian", "Norwegian Air Shuttle"),
     ("vueling", "Vueling"),
-    ("scandinavian airlines", "Scandinavian Airlines"),
     ("lufthansa", "Lufthansa"),
     ("klm", "KLM"),
     ("air france", "Air France"),
@@ -205,8 +204,8 @@ def normalize_owner_name(name):
     if not name:
         return name
     lowered = name.lower()
-    for prefix, brand in OWNER_NAME_NORMALIZATION:
-        if lowered.startswith(prefix):
+    for keyword, brand in OWNER_NAME_NORMALIZATION:
+        if keyword in lowered:
             return brand
     return name
 
