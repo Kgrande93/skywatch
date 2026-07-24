@@ -209,6 +209,18 @@
     0%, 100% { background: #b00000; }
     50% { background: #ff2020; }
   }
+  .landed-banner {
+    background: rgba(55,224,122,0.15);
+    color: #37e07a;
+    font-weight: 700;
+    text-align: center;
+    padding: clamp(10px, 1.6vh, 20px);
+    border-radius: 8px;
+    margin-bottom: clamp(16px, 3vh, 32px);
+    font-size: clamp(15px, 2.4vw, 38px);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
   .rotate-progress-track {
     position: fixed;
     left: 0;
@@ -252,6 +264,12 @@ function fmtTime(epochSeconds) {
 
 function flightLabel(ac) {
   return ac.flight_iata || ac.flight_icao || ac.callsign || 'Ukjent';
+}
+
+function isoToFlagEmoji(iso) {
+  if (!iso || iso.length !== 2) return '';
+  const codePoints = [...iso.toUpperCase()].map(c => 127397 + c.charCodeAt(0));
+  return String.fromCodePoint(...codePoints);
 }
 
 const EMERGENCY_SQUAWKS = {
@@ -305,6 +323,8 @@ function renderActive(ac) {
   const emergency = emergencyLabel(ac);
   if (emergency) {
     html += `<div class="emergency-banner">&#9888; ${emergency}</div>`;
+  } else if (ac.landed) {
+    html += `<div class="landed-banner">LANDET</div>`;
   }
 
   html += '<div class="header">';
@@ -315,7 +335,9 @@ function renderActive(ac) {
     html += `<div class="logo-box">${planeIconSvg}</div>`;
   }
   html += '<div>';
-  html += `<div class="flight-number" id="flightNumberEl">${flightLabel(ac)}</div>`;
+  const flag = isoToFlagEmoji(ac.registration_country_iso);
+  const flightNumHtml = flag ? `${flag} ${flightLabel(ac)}` : flightLabel(ac);
+  html += `<div class="flight-number" id="flightNumberEl">${flightNumHtml}</div>`;
   const nameLine = ac.operator_country ? `${ac.airline_name || ''} · ${ac.operator_country}` : (ac.airline_name || '');
   html += `<div class="airline-name">${nameLine}</div>`;
   const regType = [ac.registration, ac.aircraft_type].filter(Boolean).join(' · ');
@@ -326,7 +348,11 @@ function renderActive(ac) {
   html += '<div class="divider"></div>';
   html += `<div class="route">${routeLine || ''}</div>`;
 
-  const altStr = ac.altitude_ft != null ? `${Math.round(ac.altitude_ft)} ft` : '–';
+  let altStr = ac.altitude_ft != null ? `${Math.round(ac.altitude_ft)} ft` : '–';
+  if (ac.altitude_ft != null && ac.vertical_rate_fpm != null) {
+    if (ac.vertical_rate_fpm > 150) altStr += ' &#8593;';
+    else if (ac.vertical_rate_fpm < -150) altStr += ' &#8595;';
+  }
   const gsStr = ac.groundspeed_kt != null ? `${Math.round(ac.groundspeed_kt)} kt` : '–';
   const distStr = ac.distance_km != null ? `${ac.distance_km} km` : '–';
   const squawkStr = ac.squawk || '–';
