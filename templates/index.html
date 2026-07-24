@@ -213,18 +213,6 @@
     0%, 100% { background: #b00000; }
     50% { background: #ff2020; }
   }
-  .landed-banner {
-    background: rgba(55,224,122,0.15);
-    color: #37e07a;
-    font-weight: 700;
-    text-align: center;
-    padding: clamp(10px, 1.6vh, 20px);
-    border-radius: 8px;
-    margin-bottom: clamp(16px, 3vh, 32px);
-    font-size: clamp(15px, 2.4vw, 38px);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
   .rotate-progress-track {
     position: fixed;
     left: 0;
@@ -282,7 +270,18 @@ const EMERGENCY_SQUAWKS = {
   '7700': 'NØDSITUASJON (SQUAWK 7700)',
 };
 
+// readsb's own 'emergency' field is more specific than just the squawk code
+const EMERGENCY_TYPES = {
+  'general': 'MAYDAY - GENERELL NØDSITUASJON',
+  'lifeguard': 'MEDISINSK NØDSITUASJON (PAN PAN)',
+  'minfuel': 'DRIVSTOFFMANGEL',
+  'nordo': 'RADIOSVIKT (NORDO)',
+  'unlawful': 'KAPRING',
+  'downed': 'NØDLANDET/STYRTET',
+};
+
 function emergencyLabel(ac) {
+  if (ac.emergency && EMERGENCY_TYPES[ac.emergency]) return EMERGENCY_TYPES[ac.emergency];
   if (ac.emergency) return `NØDSITUASJON (${ac.emergency.toUpperCase()})`;
   if (ac.squawk && EMERGENCY_SQUAWKS[ac.squawk]) return EMERGENCY_SQUAWKS[ac.squawk];
   return null;
@@ -327,8 +326,6 @@ function renderActive(ac) {
   const emergency = emergencyLabel(ac);
   if (emergency) {
     html += `<div class="emergency-banner">&#9888; ${emergency}</div>`;
-  } else if (ac.landed) {
-    html += `<div class="landed-banner">LANDET</div>`;
   }
 
   html += '<div class="header">';
@@ -352,11 +349,16 @@ function renderActive(ac) {
   html += '<div class="divider"></div>';
   html += `<div class="route">${routeLine || ''}</div>`;
 
-  let altStr = ac.altitude_ft != null ? `${Math.round(ac.altitude_ft)} ft` : '–';
-  if (ac.altitude_ft != null && ac.vertical_rate_fpm != null) {
-    if (ac.vertical_rate_fpm > 150) altStr += ' &#8593;';
-    else if (ac.vertical_rate_fpm < -150) altStr += ' &#8595;';
-    else altStr += ' &#8594;';
+  let altStr;
+  if (ac.landed) {
+    altStr = 'Landet';
+  } else {
+    altStr = ac.altitude_ft != null ? `${Math.round(ac.altitude_ft)} ft` : '–';
+    if (ac.altitude_ft != null && ac.vertical_rate_fpm != null) {
+      if (ac.vertical_rate_fpm > 150) altStr += ' &#8593;';
+      else if (ac.vertical_rate_fpm < -150) altStr += ' &#8595;';
+      else altStr += ' &#8594;';
+    }
   }
   const gsStr = ac.groundspeed_kt != null ? `${Math.round(ac.groundspeed_kt)} kt` : '–';
   const distStr = ac.distance_km != null ? `${ac.distance_km} km` : '–';
@@ -402,6 +404,11 @@ function restartProgressBar() {
   bar.style.width = '0%';
 }
 
+function findEmergencyHex(list) {
+  const found = list.find(ac => emergencyLabel(ac));
+  return found ? found.hex : null;
+}
+
 function showCurrent() {
   if (currentList.length === 0) return;
   let ac = currentList.find(a => a.hex === currentHex);
@@ -418,6 +425,17 @@ function showCurrent() {
 function updateList(list) {
   const wasRotating = currentList.length > 1;
   currentList = list;
+
+  const emergencyHex = findEmergencyHex(list);
+  if (emergencyHex) {
+    // Lock onto the emergency aircraft regardless of normal rotation -
+    // easy to keep an eye on it instead of it rotating away.
+    currentHex = emergencyHex;
+    showCurrent();
+    document.getElementById('rotateProgressTrack').classList.remove('visible');
+    return;
+  }
+
   showCurrent();
   const isRotatingNow = currentList.length > 1;
   if (!wasRotating && isRotatingNow) {
@@ -432,6 +450,7 @@ function updateList(list) {
 // when the next switch happens; only this timer decides that.
 setInterval(() => {
   if (currentList.length > 1) {
+    if (findEmergencyHex(currentList)) return; // locked - don't rotate away from an emergency
     const idx = currentList.findIndex(a => a.hex === currentHex);
     const nextIdx = idx === -1 ? 0 : (idx + 1) % currentList.length;
     currentHex = currentList[nextIdx].hex;
