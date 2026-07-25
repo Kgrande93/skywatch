@@ -188,6 +188,7 @@ AIRLINE_CODE_NAMES = {
     "WAB": "Wizz Air Malta",
     "WUK": "Wizz Air UK",
     "WAZ": "Wizz Air Abu Dhabi",
+    "OCN": "Discover Airlines",
 }
 
 # ADS-B emitter category -> a plain-language label. Only used as a fallback
