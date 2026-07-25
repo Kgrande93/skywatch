@@ -31,10 +31,16 @@
     max-width: 1600px;
     width: 100%;
   }
-  .top-status {
+  .top-status-stack {
     position: fixed;
     top: clamp(12px, 2.2vh, 26px);
     left: clamp(14px, 2.5vw, 36px);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 46vw;
+  }
+  .top-status {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -47,6 +53,7 @@
   }
   .status-dot.live { background: #37e07a; box-shadow: 0 0 8px #37e07a; }
   .status-dot.idle { background: var(--muted); }
+  .status-dot.error { background: #ff4d4d; box-shadow: 0 0 8px #ff4d4d; }
   .status-label {
     font-size: clamp(10px, 1.1vw, 16px);
     letter-spacing: 0.02em;
@@ -55,7 +62,6 @@
   }
   .corner-label {
     position: fixed;
-    bottom: clamp(12px, 2.2vh, 26px);
     font-size: clamp(10px, 1.1vw, 16px);
     color: var(--muted);
     opacity: 0.8;
@@ -64,11 +70,18 @@
     line-height: 1.4;
     overflow-wrap: break-word;
   }
-  .corner-label.left {
+  .corner-label.top-right {
+    top: clamp(12px, 2.2vh, 26px);
+    right: clamp(14px, 2.5vw, 36px);
+    text-align: right;
+  }
+  .corner-label.bottom-left {
+    bottom: clamp(12px, 2.2vh, 26px);
     left: clamp(14px, 2.5vw, 36px);
     text-align: left;
   }
-  .corner-label.right {
+  .corner-label.bottom-right {
+    bottom: clamp(12px, 2.2vh, 26px);
     right: clamp(14px, 2.5vw, 36px);
     text-align: right;
   }
@@ -106,10 +119,12 @@
     max-width: 92%;
     object-fit: contain;
   }
-  .logo-box .no-logo-icon {
-    width: 42%;
-    height: 42%;
-    opacity: 0.35;
+  .logo-box .no-logo-text {
+    font-size: clamp(11px, 1.6vw, 22px);
+    color: var(--muted);
+    opacity: 0.7;
+    text-align: center;
+    padding: 0 8px;
   }
   .flight-number {
     font-size: clamp(28px, 6vw, 90px);
@@ -158,6 +173,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+  .route-missing {
+    font-size: clamp(14px, 2.4vw, 36px);
+    color: var(--muted);
+    opacity: 0.7;
   }
   .status-line {
     font-size: clamp(15px, 2.6vw, 40px);
@@ -239,15 +259,22 @@
 </head>
 <body>
   <div class="card">
-    <div class="top-status">
-      <span id="statusDot" class="status-dot idle"></span>
-      <span id="statusLabel" class="status-label">Kobler til …</span>
+    <div class="top-status-stack">
+      <div class="top-status">
+        <span id="antennaDot" class="status-dot idle"></span>
+        <span id="antennaLabel" class="status-label">Kobler til antenne …</span>
+      </div>
+      <div class="top-status">
+        <span id="statusDot" class="status-dot idle"></span>
+        <span id="statusLabel" class="status-label">Kobler til …</span>
+      </div>
     </div>
     <div id="content"></div>
     <div id="dots" class="dots"></div>
   </div>
-  <div class="corner-label left">Dette er flyene du kan se over {{ region_text }} nå.</div>
-  <div class="corner-label right">ADS-B-antenne er plassert i {{ antenna_location_text }}.</div>
+  <div class="corner-label top-right">Dette er flyene du kan se over {{ region_text }} nå.</div>
+  <div class="corner-label bottom-left">ADS-B-antenne er plassert i {{ antenna_location_text }}.</div>
+  <div class="corner-label bottom-right">Made by love in Norway &#127475;&#127476;</div>
   <div id="rotateProgressTrack" class="rotate-progress-track">
     <div id="rotateProgressBar" class="rotate-progress-bar"></div>
   </div>
@@ -257,7 +284,7 @@ const ROTATE_MS = 10000;
 let currentList = [];
 let currentHex = null;
 
-const PLANE_ICON_SVG = '<svg class="no-logo-icon" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5"><path d="M12 2L2 14h6l1 8 3-4 3 4 1-8h6z"/></svg>';
+const PLANE_ICON_SVG = '<span class="no-logo-text">Logo mangler</span>';
 
 function handleLogoFailure(imgEl) {
   const box = imgEl.closest('.logo-box');
@@ -371,7 +398,7 @@ function renderActive(ac) {
   html += '</div>';
 
   html += '<div class="divider"></div>';
-  html += `<div class="route">${routeLine || ''}</div>`;
+  html += `<div class="route">${routeLine || '<span class="route-missing">Rute mangler</span>'}</div>`;
 
   let altStr, gsStr, distStr;
   if (ac.landed) {
@@ -486,15 +513,23 @@ setInterval(() => {
 }, ROTATE_MS);
 
 function render(data) {
+  const antennaDot = document.getElementById('antennaDot');
+  const antennaLabel = document.getElementById('antennaLabel');
+  if (data.antenna_connected) {
+    antennaDot.className = 'status-dot live';
+    antennaLabel.textContent = 'Antenne tilkoblet';
+  } else {
+    antennaDot.className = 'status-dot error';
+    antennaLabel.textContent = 'Ingen kontakt med antenne';
+  }
+
   const dot = document.getElementById('statusDot');
   const label = document.getElementById('statusLabel');
   const content = document.getElementById('content');
 
   if (data.active && data.aircraft_list && data.aircraft_list.length > 0) {
     dot.className = 'status-dot live';
-    label.textContent = data.aircraft_list.length > 1
-      ? `Aktiv forbindelse (${data.aircraft_list.length} fly)`
-      : 'Aktiv forbindelse';
+    label.textContent = `Sporer ${data.aircraft_list.length} fly`;
     updateList(data.aircraft_list);
 
   } else if (data.last) {
@@ -504,7 +539,7 @@ function render(data) {
     document.getElementById('rotateProgressTrack').classList.remove('visible');
     const ac = data.last;
     dot.className = 'status-dot idle';
-    label.textContent = 'Ingen aktiv forbindelse';
+    label.textContent = 'Ingen fly i nærheten';
 
     const dest = airportLabel(ac.destination);
     const seenTime = fmtTime(ac.seen_epoch);
@@ -548,7 +583,10 @@ async function poll() {
     const data = await res.json();
     render(data);
   } catch (e) {
-    document.getElementById('statusLabel').textContent = 'Ingen kontakt med server';
+    document.getElementById('antennaDot').className = 'status-dot error';
+    document.getElementById('antennaLabel').textContent = 'Ingen kontakt med server';
+    document.getElementById('statusDot').className = 'status-dot idle';
+    document.getElementById('statusLabel').textContent = 'Forbindelse mangler';
   }
 }
 

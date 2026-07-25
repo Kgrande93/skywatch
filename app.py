@@ -43,7 +43,9 @@ _state = {
     "active": False,
     "aircraft_list": [],  # all currently in-range aircraft, enriched, sorted by distance
     "last": None,          # last known aircraft + timestamp, enriched, survives restarts
+    "last_poll_success_epoch": None,  # last time we successfully fetched aircraft.json
 }
+ANTENNA_TIMEOUT_SECONDS = int(os.environ.get("ANTENNA_TIMEOUT_SECONDS", "20"))
 _callsign_cache = {}  # callsign -> (expiry_ts, adsbdb_response_or_None)
 _aircraft_cache = {}  # hex -> (expiry_ts, adsbdb_response_or_None)
 _max_distance_by_hex = {}  # hex -> farthest distance_km ever recorded for that aircraft
@@ -337,6 +339,9 @@ def poll_once():
     aircraft_list = data.get("aircraft", [])
     now = time.time()
 
+    with _lock:
+        _state["last_poll_success_epoch"] = now
+
     candidates = []
     ground_hexes_now = set()
     for ac in aircraft_list:
@@ -428,10 +433,13 @@ def index():
 @app.route("/api/status")
 def api_status():
     with _lock:
+        last_poll = _state["last_poll_success_epoch"]
+        antenna_connected = last_poll is not None and (time.time() - last_poll) < ANTENNA_TIMEOUT_SECONDS
         return jsonify({
             "active": _state["active"],
             "aircraft_list": _state["aircraft_list"],
             "last": _state["last"],
+            "antenna_connected": antenna_connected,
             "server_time": datetime.now(timezone.utc).isoformat(),
         })
 
