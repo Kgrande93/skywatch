@@ -31,6 +31,7 @@ ADSBDB_CACHE_TTL = int(os.environ.get("ADSBDB_CACHE_TTL_SECONDS", str(6 * 3600))
 MIN_GROUNDSPEED_FOR_ETA = 30  # knots; below this we don't trust an ETA estimate
 LANDED_THRESHOLD_KM = 8  # if remaining distance to destination is under this, call it landed
 VALID_CALLSIGN = re.compile(r"^[A-Z0-9]{3,8}$")  # rejects garbage like '@@@@@@@@'
+NON_FLIGHT_CALLSIGNS = {"00000000"}  # ground vehicles etc. often broadcast this placeholder
 
 app = Flask(__name__)
 
@@ -343,7 +344,8 @@ def poll_once():
         callsign = (ac.get("flight") or "").strip()
         hexid = ac.get("hex")
 
-        if ac.get("alt_baro") == "ground" and hexid and callsign and VALID_CALLSIGN.match(callsign):
+        if (ac.get("alt_baro") == "ground" and hexid and callsign
+                and VALID_CALLSIGN.match(callsign) and callsign not in NON_FLIGHT_CALLSIGNS):
             ground_hexes_now.add(hexid)
             if hexid not in _ground_since:
                 _ground_since[hexid] = now
@@ -351,7 +353,7 @@ def poll_once():
 
         if lat is None or lon is None:
             continue
-        if not VALID_CALLSIGN.match(callsign):
+        if not VALID_CALLSIGN.match(callsign) or callsign in NON_FLIGHT_CALLSIGNS:
             continue
 
         alt = ac.get("alt_baro")
