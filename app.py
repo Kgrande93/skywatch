@@ -251,8 +251,11 @@ def enrich(ac):
     origin = route.get("origin") if route else None
 
     aircraft_info = lookup_aircraft(ac.get("hex"))
-    registration = aircraft_info.get("registration") if aircraft_info else None
-    aircraft_type = aircraft_info.get("icao_type") if aircraft_info else None
+    # readsb's own db-file (r/t fields, when --db-file is configured) is a
+    # more complete source for registration/type than ADSBdb - prefer it,
+    # falling back to ADSBdb only when readsb doesn't have it.
+    registration = ac.get("r") or (aircraft_info.get("registration") if aircraft_info else None)
+    aircraft_type = ac.get("t") or (aircraft_info.get("icao_type") if aircraft_info else None)
     registered_owner = aircraft_info.get("registered_owner") if aircraft_info else None
     owner_country = aircraft_info.get("registered_owner_country_name") if aircraft_info else None
     registration_country_iso = aircraft_info.get("registered_owner_country_iso_name") if aircraft_info else None
