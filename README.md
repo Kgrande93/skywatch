@@ -9,6 +9,12 @@ last flight seen, its route, and an estimate of when it landed based on last
 known position/speed and distance to the destination (not real schedule
 data — see "Limitations" below).
 
+**Prerequisite**: this needs an ADS-B receiver already feeding readsb/tar1090
+somewhere on your network. If you don't have that running yet, see
+[github.com/Kgrande93/FR24Feed](https://github.com/Kgrande93/FR24Feed) for a
+full setup guide (RTL2832U dongle + readsb + tar1090 + FlightRadar24 feeding
+on a Debian VM).
+
 ## Data source
 
 `readsb-install.sh` from wiedehopf/adsb-scripts installs tar1090
