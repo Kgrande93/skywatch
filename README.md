@@ -111,3 +111,68 @@ guessing.
 - When several aircraft are in range at the same time, the page
   automatically rotates between them every 6 seconds (dots at the bottom
   show how many / which one is showing).
+
+## Running it on a screen (kiosk mode)
+
+The layout is built to fill a whole screen and stay legible from a
+distance, so it works well as a dedicated always-on display.
+
+### Hardware
+
+- **Raspberry Pi 3B or newer** — plenty for this (mostly text, one small
+  logo image, and a simple CSS animation). Get one with WiFi built in if
+  you don't want to run an Ethernet cable.
+- **A screen with HDMI input** — for example
+  [this one from AliExpress](https://www.aliexpress.com/item/1005010755027785.html).
+  Double-check the listing yourself before buying: it needs to be **HDMI**,
+  not a DSI ribbon-cable display — those are usually wired specifically for
+  official Raspberry Pi touchscreens and won't work the same way with a
+  generic setup.
+
+### Flashing the Pi
+
+1. Download **Raspberry Pi Imager** (Mac/Windows/Linux) from
+   raspberrypi.com/software
+2. Choose OS → **Raspberry Pi OS Lite** (current release is based on
+   Debian "Trixie") — no desktop environment needed since Chromium runs in
+   kiosk mode directly
+3. Choose your SD card as the target
+4. Click the gear icon (or `Cmd+Shift+X` / `Ctrl+Shift+X`) for advanced
+   options **before** writing:
+   - Set a hostname (e.g. `skywatch-display`)
+   - Enable SSH (password or your existing public key)
+   - Configure WiFi (SSID, password, country) if not using Ethernet
+   - Set locale/timezone
+5. Save, then write the image. The Pi will join your WiFi automatically on
+   first boot — no monitor or keyboard needed to get started.
+6. SSH in: `ssh pi@skywatch-display.local` (or use the IP from your router)
+
+### Kiosk mode
+
+```bash
+sudo apt update && sudo apt install -y chromium-browser unclutter xserver-xorg x11-xserver-utils xinit openbox
+```
+
+Create `~/.config/openbox/autostart` with:
+
+```bash
+xset s off
+xset -dpms
+xset s noblank
+unclutter -idle 0.5 -root &
+chromium-browser --noerrdialogs --disable-infobars --kiosk http://skywatch.grandedata.no
+```
+
+(swap the URL for wherever your own instance is running)
+
+Auto-start the display on boot by adding to `~/.bash_profile`:
+
+```bash
+if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+  startx
+fi
+```
+
+And enable auto-login on tty1 via `sudo raspi-config` → System Options →
+Boot / Auto Login → Console Autologin.
+
