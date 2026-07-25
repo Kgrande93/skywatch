@@ -60,6 +60,26 @@ logs a clear warning on startup if they haven't been set.
   (default 70 km). Note this can genuinely be 200-300+ km for a decent
   antenna with clear line of sight - check the range-discovery log below
   before assuming a low default is correct.
+- `MIN_ELEVATION_DEG` — optional, and off unless you set it. When set, an
+  aircraft is only shown if it sits at least this many degrees above your
+  horizon. This matches "what can I actually see from here" better than
+  distance can on its own - the same jet at 39000 ft is 16 degrees up at
+  40 km, but only 3 degrees up at 174 km, where it's on the skyline behind
+  whatever trees and buildings you have. Roughly how far an aircraft can be
+  and still clear a given angle:
+
+  ```
+  elevation   1500 ft   15000 ft   30000 ft   39000 ft
+        5°       5 km      50 km      96 km     122 km
+       10°       3 km      26 km      51 km      65 km
+       15°       2 km      17 km      34 km      44 km
+  ```
+
+  Useful if your antenna has a partly blocked horizon, or if you just want
+  the screen to show overhead traffic rather than everything in range.
+- `NEAR_KM` — only used when `MIN_ELEVATION_DEG` is set (default 15 km).
+  Anything closer than this is shown whatever its angle, because approach
+  traffic at 1500 ft and 5 km is barely 5 degrees up yet impossible to miss.
 - `REGION_TEXT` — the region name shown on screen, e.g. "Østlandet". Pick
   something that roughly matches your actual `MAX_RANGE_KM` coverage area,
   not just your city - a wide-range antenna will pick up aircraft well
