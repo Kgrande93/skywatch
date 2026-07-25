@@ -545,7 +545,9 @@ function render(data) {
     dot.className = 'status-dot idle';
     label.textContent = 'Ingen fly i nærheten';
 
+    const origin = airportLabel(ac.origin);
     const dest = airportLabel(ac.destination);
+    const sameAirport = ac.origin && ac.destination && ac.origin.iata_code === ac.destination.iata_code;
     const seenTime = fmtTime(ac.seen_epoch);
     let etaHtml = '';
     if (ac.eta && !ac.eta.landed_estimate) {
@@ -567,7 +569,9 @@ function render(data) {
     html += '</div>';
     html += '<div class="divider"></div>';
     html += `<div class="idle-text">Siste fly som kunne sees på himmelen`;
-    if (dest) html += ` til <strong>${dest}</strong>`;
+    if (!sameAirport && origin && dest) html += ` fra <strong>${origin}</strong> til <strong>${dest}</strong>`;
+    else if (dest) html += ` til <strong>${dest}</strong>`;
+    else if (origin) html += ` fra <strong>${origin}</strong>`;
     html += `, kl. ${seenTime}${etaHtml}.</div>`;
     content.innerHTML = html;
 
