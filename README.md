@@ -1,5 +1,7 @@
 # Skywatch
 
+**Made by love in Norway 🇳🇴**
+
 A small web page that shows the last aircraft your ADS-B antenna picked up.
 When there's an active connection it shows flight number, airline, logo,
 altitude, speed and distance. When there's no active connection it shows the
@@ -42,6 +44,12 @@ logs a clear warning on startup if they haven't been set.
   outside your immediate local area.
 - `ANTENNA_LOCATION_TEXT` — where your antenna actually is, shown on screen
   as e.g. "ADS-B-antenne er plassert i <this>."
+
+> Both of these are free text and often contain spaces/commas - the
+> `.example` file already wraps them in quotes
+> (`Environment="REGION_TEXT=..."`). If you ever rewrite these lines by
+> hand, keep the quotes around the whole `KEY=value` pair, not just the
+> value - systemd otherwise silently truncates at the first space.
 
 ## Installation (new LXC, Debian)
 
