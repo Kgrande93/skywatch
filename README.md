@@ -1,4 +1,4 @@
-# Skywatch - grandedata.no
+# Skywatch
 
 **Made by love in Norway 🇳🇴**
 
@@ -21,6 +21,22 @@ on a Debian VM).
 automatically as part of the install. The webinterface is therefore at
 `http://<ip>/tar1090`, and aircraft.json at
 `http://<ip>/tar1090/data/aircraft.json`.
+
+**Finding `<ip>`**: it's whatever machine is running readsb/tar1090 - for
+example the VM from the [FR24Feed](https://github.com/Kgrande93/FR24Feed)
+setup. Find its IP from your router's client list, or by running
+`hostname -I` directly on that machine over SSH.
+
+**Test the URL before configuring Skywatch** - open
+`http://<that-ip>/tar1090` in a browser and confirm you see the live map, or
+check that this returns real JSON (not empty/404):
+
+```bash
+curl -s http://<that-ip>/tar1090/data/aircraft.json | head -c 200
+```
+
+If this doesn't work, Skywatch won't have any data to show either -
+troubleshoot readsb/tar1090 first before touching Skywatch's own config.
 
 `skywatch.service` (the filled-in version with your real values) is in
 `.gitignore` and is never tracked — only `skywatch.service.example` with
@@ -166,7 +182,7 @@ xset s off
 xset -dpms
 xset s noblank
 unclutter -idle 0.5 -root &
-chromium-browser --noerrdialogs --disable-infobars --kiosk http://skywatch.example.com
+chromium-browser --noerrdialogs --disable-infobars --kiosk http://skywatch.grandedata.no
 ```
 
 (swap the URL for wherever your own instance is running)
