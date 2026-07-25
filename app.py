@@ -190,6 +190,24 @@ AIRLINE_CODE_NAMES = {
     "WAZ": "Wizz Air Abu Dhabi",
 }
 
+# ADS-B emitter category -> a plain-language label. Only used as a fallback
+# in the UI when there's no known airline name to show instead - a category
+# label next to a real airline name would just be redundant clutter.
+CATEGORY_LABELS = {
+    "A1": "Privatfly",
+    "A2": "Kommersielt",
+    "A3": "Kommersielt",
+    "A4": "Kommersielt",
+    "A5": "Kommersielt",
+    "A6": "Kommersielt",
+    "A7": "Helikopter",
+}
+# These categories are worth showing even when we already know the
+# operator/owner name (e.g. "Helikopter" next to "Oslo Politidistrikt") -
+# unlike "Kommersielt", which is just redundant noise next to a real airline
+# name and should only appear as a fallback when nothing else is known.
+CATEGORY_ALWAYS_SHOW = {"A1", "A7"}
+
 
 def airline_display_name(icao_code, fallback_name):
     if icao_code and icao_code.upper() in AIRLINE_CODE_NAMES:
@@ -303,6 +321,8 @@ def enrich(ac):
         "registration": registration,
         "aircraft_type": aircraft_type,
         "registration_country_iso": registration_country_iso,
+        "category_label": CATEGORY_LABELS.get(ac.get("category")),
+        "category_always_show": ac.get("category") in CATEGORY_ALWAYS_SHOW,
         "operator_country": owner_country if not airline else None,
         "origin": origin,
         "destination": destination,
