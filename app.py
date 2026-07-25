@@ -20,6 +20,13 @@ AIRCRAFT_JSON_URL = os.environ.get("AIRCRAFT_JSON_URL", "http://127.0.0.1/tar109
 RECEIVER_LAT = float(os.environ.get("RECEIVER_LAT", "0"))  # set your antenna's actual latitude
 RECEIVER_LON = float(os.environ.get("RECEIVER_LON", "0"))  # set your antenna's actual longitude
 MAX_RANGE_KM = float(os.environ.get("MAX_RANGE_KM", "70"))
+# Optional "could I actually see it?" filter, off unless MIN_ELEVATION_DEG is set.
+# Distance alone can't express this: a jet at 39000 ft and 170 km away sits about
+# 3 degrees above the horizon, behind the treeline, while the same jet overhead
+# sits at 90. Aircraft closer than NEAR_KM skip the check - approach traffic at
+# 1500 ft and 5 km is only ~5 degrees up but impossible to miss.
+MIN_ELEVATION_DEG = float(os.environ.get("MIN_ELEVATION_DEG", "0"))
+NEAR_KM = float(os.environ.get("NEAR_KM", "15"))
 REGION_TEXT = os.environ.get("REGION_TEXT", "Østlandet")
 ANTENNA_LOCATION_TEXT = os.environ.get("ANTENNA_LOCATION_TEXT", "Åsgreina, Nannestad kommune")
 POLL_INTERVAL_SECONDS = int(os.environ.get("POLL_INTERVAL_SECONDS", "1"))
@@ -63,6 +70,31 @@ def haversine_km(lat1, lon1, lat2, lon2):
     dlambda = math.radians(lon2 - lon1)
     a = math.sin(dphi / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dlambda / 2) ** 2
     return 2 * r * math.asin(math.sqrt(a))
+
+
+def elevation_deg(alt_ft, ground_km):
+    """Angle of the aircraft above the observer's horizon, in degrees.
+
+    Earth curvature matters at these distances - at 170 km the surface falls
+    away roughly 2.4 km beneath the line of sight, so treating this as flat
+    trigonometry overstates the angle by close to a full degree."""
+    r = 6371.0
+    h = alt_ft * 0.0003048  # feet -> km
+    theta = ground_km / r  # angle subtended at the earth's centre
+    x = (r + h) * math.sin(theta)
+    y = (r + h) * math.cos(theta) - r
+    return math.degrees(math.atan2(y, x))
+
+
+def in_view(alt_ft, ground_km):
+    """Whether an aircraft should count as visible from the antenna site."""
+    if ground_km > MAX_RANGE_KM:
+        return False
+    if MIN_ELEVATION_DEG <= 0:
+        return True  # filter disabled, MAX_RANGE_KM alone decides
+    if ground_km <= NEAR_KM:
+        return True
+    return elevation_deg(alt_ft, ground_km) >= MIN_ELEVATION_DEG
 
 
 def load_state_file():
@@ -412,7 +444,7 @@ def poll_once():
             "altitude_ft": alt,
         })
 
-        if dist <= MAX_RANGE_KM:
+        if in_view(alt, dist):
             candidates.append((dist, ac))
 
     # Drop tracking for any hex no longer showing ground status - it
