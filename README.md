@@ -33,7 +33,15 @@ logs a clear warning on startup if they haven't been set.
   distance, and for picking the "closest aircraft" when several are in
   range). The code has no real default here — set your actual coordinates.
 - `MAX_RANGE_KM` — how far away an aircraft still counts as "in range"
-  (default 70 km).
+  (default 70 km). Note this can genuinely be 200-300+ km for a decent
+  antenna with clear line of sight - check the range-discovery log below
+  before assuming a low default is correct.
+- `REGION_TEXT` — the region name shown on screen, e.g. "Østlandet". Pick
+  something that roughly matches your actual `MAX_RANGE_KM` coverage area,
+  not just your city - a wide-range antenna will pick up aircraft well
+  outside your immediate local area.
+- `ANTENNA_LOCATION_TEXT` — where your antenna actually is, shown on screen
+  as e.g. "ADS-B-antenne er plassert i <this>."
 
 ## Installation (new LXC, Debian)
 

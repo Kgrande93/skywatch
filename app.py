@@ -20,6 +20,8 @@ AIRCRAFT_JSON_URL = os.environ.get("AIRCRAFT_JSON_URL", "http://127.0.0.1/tar109
 RECEIVER_LAT = float(os.environ.get("RECEIVER_LAT", "0"))  # set your antenna's actual latitude
 RECEIVER_LON = float(os.environ.get("RECEIVER_LON", "0"))  # set your antenna's actual longitude
 MAX_RANGE_KM = float(os.environ.get("MAX_RANGE_KM", "70"))
+REGION_TEXT = os.environ.get("REGION_TEXT", "Østlandet")
+ANTENNA_LOCATION_TEXT = os.environ.get("ANTENNA_LOCATION_TEXT", "Åsgreina, Nannestad kommune")
 POLL_INTERVAL_SECONDS = int(os.environ.get("POLL_INTERVAL_SECONDS", "1"))
 STATE_FILE = os.environ.get("STATE_FILE", "/var/lib/skywatch/last_seen.json")
 DISTANCE_LOG_FILE = os.environ.get("DISTANCE_LOG_FILE", "/var/lib/skywatch/distance_log.jsonl")
@@ -418,7 +420,7 @@ def poll_once():
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", region_text=REGION_TEXT, antenna_location_text=ANTENNA_LOCATION_TEXT)
 
 
 @app.route("/api/status")
