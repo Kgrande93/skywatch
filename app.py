@@ -32,6 +32,9 @@ MIN_GROUNDSPEED_FOR_ETA = 30  # knots; below this we don't trust an ETA estimate
 LANDED_THRESHOLD_KM = 8  # if remaining distance to destination is under this, call it landed
 VALID_CALLSIGN = re.compile(r"^[A-Z0-9]{3,8}$")  # rejects garbage like '@@@@@@@@'
 NON_FLIGHT_CALLSIGNS = {"00000000"}  # ground vehicles etc. often broadcast this placeholder
+# ADS-B emitter categories C1-C5 are surface vehicles and fixed obstacles,
+# not aircraft (DO-260B spec) - never show these as "planes in the sky".
+NON_AIRCRAFT_CATEGORIES = {"C1", "C2", "C3", "C4", "C5"}
 
 app = Flask(__name__)
 
@@ -369,6 +372,9 @@ def poll_once():
     candidates = []
     ground_hexes_now = set()
     for ac in aircraft_list:
+        if ac.get("category") in NON_AIRCRAFT_CATEGORIES:
+            continue
+
         lat, lon = ac.get("lat"), ac.get("lon")
         callsign = (ac.get("flight") or "").strip()
         hexid = ac.get("hex")
