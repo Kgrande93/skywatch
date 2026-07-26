@@ -390,13 +390,15 @@ function renderActive(ac) {
   html += `<div class="flight-number" id="flightNumberEl">${flightLabel(ac)}</div>`;
   const nameParts = [];
   if (ac.airline_name) nameParts.push(ac.airline_name);
-  if (ac.category_label && (ac.category_always_show || !ac.airline_name)) nameParts.push(ac.category_label);
   if (ac.operator_country) nameParts.push(ac.operator_country);
   const nameLine = nameParts.join(' · ');
   html += `<div class="airline-name">${nameLine}</div>`;
   const flag = isoToFlagEmoji(ac.registration_country_iso);
   const regWithFlag = flag && ac.registration ? `${flag} ${ac.registration}` : ac.registration;
-  const regType = [regWithFlag, ac.aircraft_type].filter(Boolean).join(' · ');
+  let typeLabel = null;
+  if (ac.is_military) typeLabel = 'Militærfly';
+  else if (ac.category_label && (ac.category_always_show || !ac.airline_name)) typeLabel = ac.category_label;
+  const regType = [regWithFlag, ac.aircraft_type, typeLabel].filter(Boolean).join(' · ');
   html += `<div class="reg-type">${regType}</div>`;
   html += '</div>';
   html += '</div>';
