@@ -20,8 +20,9 @@ AIRCRAFT_JSON_URL = os.environ.get("AIRCRAFT_JSON_URL", "http://127.0.0.1/tar109
 RECEIVER_LAT = float(os.environ.get("RECEIVER_LAT", "0"))  # set your antenna's actual latitude
 RECEIVER_LON = float(os.environ.get("RECEIVER_LON", "0"))  # set your antenna's actual longitude
 MAX_RANGE_KM = float(os.environ.get("MAX_RANGE_KM", "70"))
-REGION_TEXT = os.environ.get("REGION_TEXT", "Østlandet")
-ANTENNA_LOCATION_TEXT = os.environ.get("ANTENNA_LOCATION_TEXT", "Åsgreina, Nannestad kommune")
+REGION_TEXT = os.environ.get("REGION_TEXT", "Gardermoen area")
+ANTENNA_LOCATION_TEXT = os.environ.get("ANTENNA_LOCATION_TEXT", "somewhere in Norway")
+TIMEZONE = os.environ.get("TIMEZONE", "Europe/Oslo")
 POLL_INTERVAL_SECONDS = int(os.environ.get("POLL_INTERVAL_SECONDS", "1"))
 STATE_FILE = os.environ.get("STATE_FILE", "/var/lib/skywatch/last_seen.json")
 DISTANCE_LOG_FILE = os.environ.get("DISTANCE_LOG_FILE", "/var/lib/skywatch/distance_log.jsonl")
@@ -198,17 +199,17 @@ AIRLINE_CODE_NAMES = {
 # in the UI when there's no known airline name to show instead - a category
 # label next to a real airline name would just be redundant clutter.
 CATEGORY_LABELS = {
-    "A1": "Privatfly",
-    "A2": "Kommersielt",
-    "A3": "Kommersielt",
-    "A4": "Kommersielt",
-    "A5": "Kommersielt",
-    "A6": "Kommersielt",
-    "A7": "Helikopter",
+    "A1": "Private aircraft",
+    "A2": "Commercial",
+    "A3": "Commercial",
+    "A4": "Commercial",
+    "A5": "Commercial",
+    "A6": "Commercial",
+    "A7": "Helicopter",
 }
 # These categories are worth showing even when we already know the
-# operator/owner name (e.g. "Helikopter" next to "Oslo Politidistrikt") -
-# unlike "Kommersielt", which is just redundant noise next to a real airline
+# operator/owner name (e.g. "Helicopter" next to "Oslo Police District") -
+# unlike "Commercial", which is just redundant noise next to a real airline
 # name and should only appear as a fallback when nothing else is known.
 CATEGORY_ALWAYS_SHOW = {"A1", "A7"}
 
@@ -327,6 +328,7 @@ def enrich(ac):
         "registration_country_iso": registration_country_iso,
         "category_label": CATEGORY_LABELS.get(ac.get("category")),
         "category_always_show": ac.get("category") in CATEGORY_ALWAYS_SHOW,
+        "is_military": bool(ac.get("dbFlags", 0) & 1),
         "operator_country": owner_country if not airline else None,
         "origin": origin,
         "destination": destination,

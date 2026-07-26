@@ -1,6 +1,6 @@
 # Skywatch
 
-**Made by love in Norway 🇳🇴**
+**Made by love in Nannestad, Norway 🇳🇴**
 
 A small web page that shows the last aircraft your ADS-B antenna picked up.
 When there's an active connection it shows flight number, airline, logo,
@@ -60,12 +60,16 @@ logs a clear warning on startup if they haven't been set.
   (default 70 km). Note this can genuinely be 200-300+ km for a decent
   antenna with clear line of sight - check the range-discovery log below
   before assuming a low default is correct.
-- `REGION_TEXT` — the region name shown on screen, e.g. "Østlandet". Pick
-  something that roughly matches your actual `MAX_RANGE_KM` coverage area,
-  not just your city - a wide-range antenna will pick up aircraft well
-  outside your immediate local area.
+- `REGION_TEXT` — the region name shown on screen, e.g. "Gardermoen area".
+  Pick something that roughly matches your actual `MAX_RANGE_KM` coverage
+  area, not just your city - a wide-range antenna will pick up aircraft
+  well outside your immediate local area.
 - `ANTENNA_LOCATION_TEXT` — where your antenna actually is, shown on screen
-  as e.g. "ADS-B-antenne er plassert i <this>."
+  as e.g. "ADS-B antenna is located in <this>."
+- `TIMEZONE` — an IANA timezone name (e.g. `Europe/Oslo`), default
+  `Europe/Oslo`. Used for date/time-based features (holiday effects etc.) so
+  they trigger at the right local moment regardless of what timezone the
+  host machine's system clock happens to be set to.
 
 > Both of these are free text and often contain spaces/commas - the
 > `.example` file already wraps them in quotes

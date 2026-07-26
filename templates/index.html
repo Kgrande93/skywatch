@@ -262,19 +262,19 @@
     <div class="top-status-stack">
       <div class="top-status">
         <span id="antennaDot" class="status-dot idle"></span>
-        <span id="antennaLabel" class="status-label">Kobler til antenne …</span>
+        <span id="antennaLabel" class="status-label">Connecting to antenna …</span>
       </div>
       <div class="top-status">
         <span id="statusDot" class="status-dot idle"></span>
-        <span id="statusLabel" class="status-label">Kobler til …</span>
+        <span id="statusLabel" class="status-label">Connecting …</span>
       </div>
     </div>
     <div id="content"></div>
     <div id="dots" class="dots"></div>
   </div>
-  <div class="corner-label top-right">Dette er flyene du kan se over {{ region_text }} nå.</div>
-  <div class="corner-label bottom-left">ADS-B-antenne er plassert i {{ antenna_location_text }}.</div>
-  <div class="corner-label bottom-right">Made by love in Norway &#127475;&#127476;</div>
+  <div class="corner-label top-right">This is the aircraft you can see over the {{ region_text }} area right now.</div>
+  <div class="corner-label bottom-left">ADS-B antenna is located in {{ antenna_location_text }}.</div>
+  <div class="corner-label bottom-right">Made by love in Nannestad, Norway &#127475;&#127476;</div>
   <div id="rotateProgressTrack" class="rotate-progress-track">
     <div id="rotateProgressBar" class="rotate-progress-bar"></div>
   </div>
@@ -284,7 +284,7 @@ const ROTATE_MS = 10000;
 let currentList = [];
 let currentHex = null;
 
-const PLANE_ICON_SVG = '<span class="no-logo-text">Logo mangler</span>';
+const PLANE_ICON_SVG = '<span class="no-logo-text">Logo missing</span>';
 
 function handleLogoFailure(imgEl) {
   const box = imgEl.closest('.logo-box');
@@ -307,7 +307,7 @@ function fmtTime(epochSeconds) {
 }
 
 function flightLabel(ac) {
-  return ac.flight_iata || ac.flight_icao || ac.callsign || 'Ukjent';
+  return ac.flight_iata || ac.flight_icao || ac.callsign || 'Unknown';
 }
 
 function isoToFlagEmoji(iso) {
@@ -317,41 +317,27 @@ function isoToFlagEmoji(iso) {
 }
 
 const EMERGENCY_SQUAWKS = {
-  '7500': 'KAPRING (SQUAWK 7500)',
-  '7600': 'RADIOSVIKT (SQUAWK 7600)',
-  '7700': 'NØDSITUASJON (SQUAWK 7700)',
+  '7500': 'HIJACKING (SQUAWK 7500)',
+  '7600': 'RADIO FAILURE (SQUAWK 7600)',
+  '7700': 'EMERGENCY (SQUAWK 7700)',
 };
 
 // readsb's own 'emergency' field is more specific than just the squawk code
 const EMERGENCY_TYPES = {
-  'general': 'MAYDAY - GENERELL NØDSITUASJON',
-  'lifeguard': 'MEDISINSK NØDSITUASJON (PAN PAN)',
-  'minfuel': 'DRIVSTOFFMANGEL',
-  'nordo': 'RADIOSVIKT (NORDO)',
-  'unlawful': 'KAPRING',
-  'downed': 'NØDLANDET/STYRTET',
+  'general': 'MAYDAY - GENERAL EMERGENCY',
+  'lifeguard': 'MEDICAL EMERGENCY (PAN PAN)',
+  'minfuel': 'FUEL EMERGENCY',
+  'nordo': 'RADIO FAILURE (NORDO)',
+  'unlawful': 'HIJACKING',
+  'downed': 'EMERGENCY LANDING/DOWNED',
 };
 
 function emergencyLabel(ac) {
   if (ac.emergency && EMERGENCY_TYPES[ac.emergency]) return EMERGENCY_TYPES[ac.emergency];
-  if (ac.emergency) return `NØDSITUASJON (${ac.emergency.toUpperCase()})`;
+  if (ac.emergency) return `EMERGENCY (${ac.emergency.toUpperCase()})`;
   if (ac.squawk && EMERGENCY_SQUAWKS[ac.squawk]) return EMERGENCY_SQUAWKS[ac.squawk];
   return null;
 }
-
-const COUNTRY_NO = {
-  "Norway": "Norge", "Sweden": "Sverige", "Denmark": "Danmark", "Finland": "Finland",
-  "Iceland": "Island", "Germany": "Tyskland", "United Kingdom": "Storbritannia",
-  "France": "Frankrike", "Spain": "Spania", "Italy": "Italia", "Poland": "Polen",
-  "Netherlands": "Nederland", "Belgium": "Belgia", "Switzerland": "Sveits",
-  "Austria": "Østerrike", "Portugal": "Portugal", "Greece": "Hellas",
-  "Ireland": "Irland", "Croatia": "Kroatia", "Turkey": "Tyrkia",
-  "United States": "USA", "United Arab Emirates": "De forente arabiske emirater",
-  "Latvia": "Latvia", "Lithuania": "Litauen", "Estonia": "Estland",
-  "Czech Republic": "Tsjekkia", "Hungary": "Ungarn", "Slovakia": "Slovakia",
-  "Slovenia": "Slovenia", "Romania": "Romania", "Bulgaria": "Bulgaria",
-  "Morocco": "Marokko", "Thailand": "Thailand", "Egypt": "Egypt",
-};
 
 function airportLabel(ap) {
   if (!ap) return null;
@@ -359,9 +345,7 @@ function airportLabel(ap) {
   const city = ap.municipality;
   if (!code) return city || ap.name || null;
   if (!city) return code;
-  const country = ap.country_name && ap.country_name !== "Norway"
-    ? (COUNTRY_NO[ap.country_name] || ap.country_name)
-    : null;
+  const country = ap.country_name && ap.country_name !== "Norway" ? ap.country_name : null;
   return country ? `${code} (${city}, ${country})` : `${code} (${city})`;
 }
 
@@ -396,7 +380,7 @@ function renderActive(ac) {
   const flag = isoToFlagEmoji(ac.registration_country_iso);
   const regWithFlag = flag && ac.registration ? `${flag} ${ac.registration}` : ac.registration;
   let typeLabel = null;
-  if (ac.is_military) typeLabel = 'Militærfly';
+  if (ac.is_military) typeLabel = 'Military aircraft';
   else if (ac.category_label && (ac.category_always_show || !ac.airline_name)) typeLabel = ac.category_label;
   const regType = [regWithFlag, ac.aircraft_type, typeLabel].filter(Boolean).join(' · ');
   html += `<div class="reg-type">${regType}</div>`;
@@ -404,7 +388,7 @@ function renderActive(ac) {
   html += '</div>';
 
   html += '<div class="divider"></div>';
-  html += `<div class="route">${routeLine || '<span class="route-missing">Rute mangler</span>'}</div>`;
+  html += `<div class="route">${routeLine || '<span class="route-missing">Route unknown</span>'}</div>`;
 
   let altStr, gsStr, distStr;
   if (ac.landed) {
@@ -425,9 +409,9 @@ function renderActive(ac) {
   const squawkIsEmergency = ac.squawk && EMERGENCY_SQUAWKS[ac.squawk];
   const squawkStyle = squawkIsEmergency ? ' style="color:#ff3b3b;font-weight:800;"' : '';
   html += '<div class="metrics">';
-  html += `<div><div class="metric-value">${altStr}</div><div class="metric-label">Høyde</div></div>`;
-  html += `<div><div class="metric-value">${gsStr}</div><div class="metric-label">Fart</div></div>`;
-  html += `<div><div class="metric-value">${distStr}</div><div class="metric-label">Avstand</div></div>`;
+  html += `<div><div class="metric-value">${altStr}</div><div class="metric-label">Altitude</div></div>`;
+  html += `<div><div class="metric-value">${gsStr}</div><div class="metric-label">Speed</div></div>`;
+  html += `<div><div class="metric-value">${distStr}</div><div class="metric-label">Distance</div></div>`;
   html += `<div><div class="metric-value"${squawkStyle}>${squawkStr}</div><div class="metric-label">Squawk</div></div>`;
   html += '</div>';
 
@@ -523,10 +507,10 @@ function render(data) {
   const antennaLabel = document.getElementById('antennaLabel');
   if (data.antenna_connected) {
     antennaDot.className = 'status-dot live';
-    antennaLabel.textContent = 'Antenne tilkoblet';
+    antennaLabel.textContent = 'Antenna connected';
   } else {
     antennaDot.className = 'status-dot error';
-    antennaLabel.textContent = 'Ingen kontakt med antenne';
+    antennaLabel.textContent = 'No antenna connection';
   }
 
   const dot = document.getElementById('statusDot');
@@ -535,7 +519,7 @@ function render(data) {
 
   if (data.active && data.aircraft_list && data.aircraft_list.length > 0) {
     dot.className = 'status-dot live';
-    label.textContent = `Sporer ${data.aircraft_list.length} fly`;
+    label.textContent = `Tracking ${data.aircraft_list.length} aircraft`;
     updateList(data.aircraft_list);
 
   } else if (data.last) {
@@ -545,15 +529,15 @@ function render(data) {
     document.getElementById('rotateProgressTrack').classList.remove('visible');
     const ac = data.last;
     dot.className = 'status-dot idle';
-    label.textContent = 'Ingen fly i nærheten';
+    label.textContent = 'No aircraft nearby';
 
     const dest = airportLabel(ac.destination);
     const seenTime = fmtTime(ac.seen_epoch);
     let etaHtml = '';
     if (ac.eta && !ac.eta.landed_estimate) {
-      etaHtml = ` &mdash; estimert landing ca. <strong>${fmtTime(ac.eta.epoch)}</strong>`;
+      etaHtml = ` &mdash; estimated landing around <strong>${fmtTime(ac.eta.epoch)}</strong>`;
     } else if (ac.eta && ac.eta.landed_estimate) {
-      etaHtml = ` &mdash; trolig landet rundt <strong>${seenTime}</strong>`;
+      etaHtml = ` &mdash; likely landed around <strong>${seenTime}</strong>`;
     }
 
     let html = '<div class="header">';
@@ -568,9 +552,9 @@ function render(data) {
     html += '</div>';
     html += '</div>';
     html += '<div class="divider"></div>';
-    html += `<div class="idle-text">Siste fly som kunne sees på himmelen`;
-    if (dest) html += ` til <strong>${dest}</strong>`;
-    html += `, kl. ${seenTime}${etaHtml}.</div>`;
+    html += `<div class="idle-text">Last aircraft seen in the sky`;
+    if (dest) html += ` heading to <strong>${dest}</strong>`;
+    html += `, at ${seenTime}${etaHtml}.</div>`;
     content.innerHTML = html;
 
   } else {
@@ -578,8 +562,8 @@ function render(data) {
     currentHex = null;
     document.getElementById('rotateProgressTrack').classList.remove('visible');
     dot.className = 'status-dot idle';
-    label.textContent = 'Ingen data ennå';
-    content.innerHTML = '<div class="empty">Venter på første fly …</div>';
+    label.textContent = 'No data yet';
+    content.innerHTML = '<div class="empty">Waiting for the first aircraft …</div>';
   }
 }
 
@@ -590,9 +574,9 @@ async function poll() {
     render(data);
   } catch (e) {
     document.getElementById('antennaDot').className = 'status-dot error';
-    document.getElementById('antennaLabel').textContent = 'Ingen kontakt med server';
+    document.getElementById('antennaLabel').textContent = 'No server connection';
     document.getElementById('statusDot').className = 'status-dot idle';
-    document.getElementById('statusLabel').textContent = 'Forbindelse mangler';
+    document.getElementById('statusLabel').textContent = 'Connection lost';
   }
 }
 
