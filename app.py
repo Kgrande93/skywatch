@@ -5,10 +5,13 @@ import os
 import re
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import requests
 from flask import Flask, jsonify, render_template
+
+import santa_route
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("skywatch")
@@ -23,6 +26,9 @@ MAX_RANGE_KM = float(os.environ.get("MAX_RANGE_KM", "70"))
 REGION_TEXT = os.environ.get("REGION_TEXT", "Gardermoen area")
 ANTENNA_LOCATION_TEXT = os.environ.get("ANTENNA_LOCATION_TEXT", "somewhere in Norway")
 TIMEZONE = os.environ.get("TIMEZONE", "Europe/Oslo")
+TZ = ZoneInfo(TIMEZONE)
+SANTA_CRUISE_ALTITUDE_FT = 241200  # deliberately absurd - well past the Karman line
+SANTA_CLIMB_DESCEND_FRACTION = 0.15  # first/last 15% of each leg is climb/descent
 POLL_INTERVAL_SECONDS = int(os.environ.get("POLL_INTERVAL_SECONDS", "1"))
 STATE_FILE = os.environ.get("STATE_FILE", "/var/lib/skywatch/last_seen.json")
 DISTANCE_LOG_FILE = os.environ.get("DISTANCE_LOG_FILE", "/var/lib/skywatch/distance_log.jsonl")
@@ -457,6 +463,123 @@ def poll_once():
     save_state_file()
 
 
+# ---------------------------------------------------------------------------
+# Holiday effects (snow, fireworks, Santa's sleigh) - all computed live from
+# TIMEZONE, no persistent state needed since they're pure functions of "now".
+# ---------------------------------------------------------------------------
+
+def first_advent_sunday(year):
+    """1st Sunday of Advent = 4th Sunday before Christmas Day."""
+    dec25 = date(year, 12, 25)
+    days_since_sunday = (dec25.weekday() + 1) % 7  # Mon=0..Sun=6 -> days since last Sunday
+    fourth_advent = dec25 - timedelta(days=days_since_sunday)
+    return fourth_advent - timedelta(weeks=3)
+
+
+def get_holiday_flags(now_local):
+    year = now_local.year
+    today = now_local.date()
+    advent1 = first_advent_sunday(year)
+    dec30 = date(year, 12, 30)
+    show_snow = advent1 <= today <= dec30
+
+    show_fireworks = (
+        now_local.month == 1 and now_local.day == 1
+        and now_local.hour == 0 and now_local.minute < 5
+    )
+    return show_snow, show_fireworks
+
+
+def build_santa_schedule(year):
+    """Convert each stop's local arrival time to a UTC epoch, sort
+    chronologically, and bookend the list with virtual North Pole stops."""
+    schedule = []
+    for stop in santa_route.STOPS:
+        try:
+            tz = ZoneInfo(stop["timezone"])
+            local_dt = datetime(year, 12, stop["day"], stop["hour"], stop["minute"], tzinfo=tz)
+            schedule.append({"country": stop["country"], "lat": stop["lat"], "lon": stop["lon"],
+                              "epoch": local_dt.astimezone(timezone.utc).timestamp()})
+        except Exception as e:
+            log.warning("Skipping bad Santa stop %s: %s", stop.get("country"), e)
+
+    schedule.sort(key=lambda s: s["epoch"])
+    if not schedule:
+        return []
+
+    lead = 3600  # 1 hour buffer at each end for the North Pole legs
+    north_pole_start = {"country": "the North Pole", "lat": 90.0, "lon": 0.0,
+                         "epoch": schedule[0]["epoch"] - lead}
+    north_pole_end = {"country": "the North Pole", "lat": 90.0, "lon": 0.0,
+                       "epoch": schedule[-1]["epoch"] + lead}
+    return [north_pole_start] + schedule + [north_pole_end]
+
+
+def get_santa_status(now_utc_epoch):
+    """Returns a synthetic 'aircraft' entry for Santa if now falls within his
+    route window, else None. Checks both this year's and (in early January)
+    last year's schedule, since the route can span into Jan 1 briefly."""
+    for year in (datetime.fromtimestamp(now_utc_epoch, tz=timezone.utc).year,
+                 datetime.fromtimestamp(now_utc_epoch, tz=timezone.utc).year - 1):
+        schedule = build_santa_schedule(year)
+        if not schedule:
+            continue
+        if not (schedule[0]["epoch"] <= now_utc_epoch <= schedule[-1]["epoch"]):
+            continue
+
+        # Find which leg we're on
+        for i in range(len(schedule) - 1):
+            leg_start, leg_end = schedule[i], schedule[i + 1]
+            if leg_start["epoch"] <= now_utc_epoch <= leg_end["epoch"]:
+                duration = leg_end["epoch"] - leg_start["epoch"]
+                progress = 0.5 if duration <= 0 else (now_utc_epoch - leg_start["epoch"]) / duration
+
+                distance_km = haversine_km(leg_start["lat"], leg_start["lon"], leg_end["lat"], leg_end["lon"])
+                duration_hr = duration / 3600
+                groundspeed_kt = (distance_km / 1.852) / duration_hr if duration_hr > 0 else 0
+                remaining_km = distance_km * (1 - progress)
+
+                if progress < SANTA_CLIMB_DESCEND_FRACTION:
+                    climb_progress = progress / SANTA_CLIMB_DESCEND_FRACTION
+                    altitude_ft = SANTA_CRUISE_ALTITUDE_FT * climb_progress
+                    vertical_rate = 5000
+                elif progress > 1 - SANTA_CLIMB_DESCEND_FRACTION:
+                    descend_progress = (1 - progress) / SANTA_CLIMB_DESCEND_FRACTION
+                    altitude_ft = SANTA_CRUISE_ALTITUDE_FT * descend_progress
+                    vertical_rate = -5000
+                else:
+                    altitude_ft = SANTA_CRUISE_ALTITUDE_FT
+                    vertical_rate = 0
+
+                return {
+                    "hex": "santa01",
+                    "callsign": "SANTA01",
+                    "flight_iata": "SANTA01",
+                    "flight_icao": "SANTA01",
+                    "is_santa": True,
+                    "airline_name": "Santa Airlines",
+                    "airline_logo": None,
+                    "registration": "SANTA01",
+                    "aircraft_type": "Sleigh",
+                    "registration_country_iso": None,
+                    "category_label": None,
+                    "category_always_show": False,
+                    "is_military": False,
+                    "operator_country": None,
+                    "origin": {"iata_code": None, "municipality": leg_start["country"], "name": leg_start["country"], "country_name": None},
+                    "destination": {"iata_code": None, "municipality": leg_end["country"], "name": leg_end["country"], "country_name": None},
+                    "altitude_ft": round(altitude_ft),
+                    "vertical_rate_fpm": vertical_rate,
+                    "groundspeed_kt": round(groundspeed_kt),
+                    "distance_km": round(remaining_km, 1),
+                    "squawk": "XMAS",
+                    "emergency": None,
+                    "eta": None,
+                    "seen_epoch": now_utc_epoch,
+                }
+    return None
+
+
 @app.route("/")
 def index():
     return render_template("index.html", region_text=REGION_TEXT, antenna_location_text=ANTENNA_LOCATION_TEXT)
@@ -467,13 +590,33 @@ def api_status():
     with _lock:
         last_poll = _state["last_poll_success_epoch"]
         antenna_connected = last_poll is not None and (time.time() - last_poll) < ANTENNA_TIMEOUT_SECONDS
-        return jsonify({
-            "active": _state["active"],
-            "aircraft_list": _state["aircraft_list"],
-            "last": _state["last"],
-            "antenna_connected": antenna_connected,
-            "server_time": datetime.now(timezone.utc).isoformat(),
-        })
+
+        now_utc_epoch = time.time()
+        now_local = datetime.now(TZ)
+        show_snow, show_fireworks = get_holiday_flags(now_local)
+        santa = get_santa_status(now_utc_epoch)
+
+        if santa:
+            # Santa joins the rotation alongside whatever real aircraft are
+            # currently in range - he doesn't replace normal tracking.
+            aircraft_list = [santa] + _state["aircraft_list"]
+            response = {
+                "active": True,
+                "aircraft_list": aircraft_list,
+                "last": _state["last"],
+            }
+        else:
+            response = {
+                "active": _state["active"],
+                "aircraft_list": _state["aircraft_list"],
+                "last": _state["last"],
+            }
+
+        response["antenna_connected"] = antenna_connected
+        response["show_snow"] = show_snow
+        response["show_fireworks"] = show_fireworks
+        response["server_time"] = datetime.now(timezone.utc).isoformat()
+        return jsonify(response)
 
 
 @app.route("/api/range-log")
