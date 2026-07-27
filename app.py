@@ -187,20 +187,6 @@ def lookup_aircraft(hex_code):
     return result
 
 
-# ICAO operator codes mapped to a clean, consistent display name. This
-# guarantees a name shows up even when ADSBdb's free-text name is missing
-# or inconsistent for that specific code - keyed by the standardized ICAO
-# code rather than matching free-text, since the code is reliable and the
-# text isn't. Anything not in this table is shown exactly as ADSBdb/the
-# route database provides it.
-AIRLINE_CODE_NAMES = {
-    "WZZ": "Wizz Air Hungary",
-    "WAB": "Wizz Air Malta",
-    "WUK": "Wizz Air UK",
-    "WAZ": "Wizz Air Abu Dhabi",
-    "OCN": "Discover Airlines",
-}
-
 # ADS-B emitter category -> a plain-language label. Only used as a fallback
 # in the UI when there's no known airline name to show instead - a category
 # label next to a real airline name would just be redundant clutter.
@@ -219,20 +205,37 @@ CATEGORY_LABELS = {
 # name and should only appear as a fallback when nothing else is known.
 CATEGORY_ALWAYS_SHOW = {"A1", "A7"}
 
+# ICAO operator codes for fractional-ownership / on-demand private jet
+# charter operators. ADSBdb returns a real operator name for these (e.g.
+# "NetJets"), so the normal category-label fallback never fires - but
+# they aren't scheduled commercial airlines, and that distinction should
+# still show up on screen. Add more codes here as needed.
+PRIVATE_CHARTER_OPERATOR_CODES = {
+    "EJA",  # NetJets Aviation (US)
+    "NJE",  # NetJets Europe
+    "VJT",  # VistaJet (Malta)
+    "LXJ",  # Flexjet (US)
+    "FLJ",  # Flexjet Operations UK
+}
 
-def airline_display_name(icao_code, fallback_name):
-    if icao_code and icao_code.upper() in AIRLINE_CODE_NAMES:
-        return AIRLINE_CODE_NAMES[icao_code.upper()]
-    # ADSBdb's registered_owner field is sometimes just a bare, too-generic
-    # word rather than the real full name - expand only these exact cases,
-    # leave genuinely distinct names (subsidiaries, etc.) untouched.
-    if fallback_name:
-        bare = fallback_name.strip().lower()
-        if bare == "norwegian":
-            return "Norwegian Air Shuttle"
-        if bare in ("widerøe", "wideroe"):
-            return "Widerøe Flyveselskap"
-    return fallback_name
+# ICAO operator codes mapped to a known company name - used ONLY when
+# ADSBdb/the aircraft lookup returns no name at all for that flight.
+# Never overrides a name that was actually returned, even if it looks
+# generic or inconsistent - this is strictly a last-resort fallback.
+FALLBACK_OPERATOR_NAMES = {
+    "WIF": "Widerøe Flyveselskap",
+    "NAX": "Norwegian Air Shuttle",
+    "WZZ": "Wizz Air Hungary",
+    "WAB": "Wizz Air Malta",
+    "WUK": "Wizz Air UK",
+    "WAZ": "Wizz Air Abu Dhabi",
+    "OCN": "Discover Airlines",
+    "EJA": "NetJets",
+    "NJE": "NetJets Europe",
+    "VJT": "VistaJet",
+    "LXJ": "Flexjet",
+    "FLJ": "Flexjet",
+}
 
 
 def airline_logo_url(airline):
@@ -320,7 +323,15 @@ def enrich(ac):
     operator_flag_code = aircraft_info.get("registered_owner_operator_flag_code") if aircraft_info else None
     best_operator_code = airline_icao or operator_flag_code
     raw_name = (airline.get("name") if airline else None) or registered_owner
-    display_name = airline_display_name(best_operator_code, raw_name)
+    display_name = raw_name or (FALLBACK_OPERATOR_NAMES.get(best_operator_code.upper()) if best_operator_code else None)
+
+    is_private_charter = bool(best_operator_code) and best_operator_code.upper() in PRIVATE_CHARTER_OPERATOR_CODES
+    if is_private_charter:
+        category_label = "Private charter"
+        category_always_show = True
+    else:
+        category_label = CATEGORY_LABELS.get(ac.get("category"))
+        category_always_show = ac.get("category") in CATEGORY_ALWAYS_SHOW
 
     entry = {
         "hex": ac.get("hex"),
@@ -332,8 +343,8 @@ def enrich(ac):
         "registration": registration,
         "aircraft_type": aircraft_type,
         "registration_country_iso": registration_country_iso,
-        "category_label": CATEGORY_LABELS.get(ac.get("category")),
-        "category_always_show": ac.get("category") in CATEGORY_ALWAYS_SHOW,
+        "category_label": category_label,
+        "category_always_show": category_always_show,
         "is_military": bool(ac.get("dbFlags", 0) & 1),
         "operator_country": owner_country if not airline else None,
         "origin": origin,
