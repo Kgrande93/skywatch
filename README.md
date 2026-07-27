@@ -124,6 +124,56 @@ This shows every aircraft sorted farthest-first, so you can see your
 antenna's actual range and tune `MAX_RANGE_KM` to match reality instead of
 guessing.
 
+## 🎅 Easter egg: Santa, snow, and fireworks
+
+A few seasonal extras run automatically, all based on the `TIMEZONE` setting
+(not the host machine's system clock) - no manual switch needed.
+
+**Snow** - a light, subtle snowflake layer falls over the whole screen from
+the 1st Sunday of Advent (calculated per year - the 4th Sunday before Dec 25)
+through December 30th. Purely decorative, low opacity, doesn't interfere with
+reading the flight data.
+
+**Santa's sleigh** - from Dec 24 evening through Dec 25, `SANTA01` (Santa
+Airlines, aircraft type "Sleigh") joins the normal aircraft rotation as one
+more tracked "flight," alongside any real aircraft in range. His route,
+speed, altitude, and position are computed live:
+
+- `santa_route.py` lists ~60 countries (a representative global sample, not
+  all ~195 - easy to extend in the same format), each with its own timezone
+  and the local clock time its actual Christmas gift-giving tradition calls
+  for: evening of Dec 24 for most of Europe, midnight for most of Latin
+  America, morning of Dec 25 for the Anglophone world. Countries where a
+  different figure delivers gifts on a different date entirely (Netherlands/
+  Belgium: Sinterklaas Dec 5-6, Spain: Three Kings Jan 6, Russia and several
+  Orthodox countries: New Year/Jan 7) are deliberately left out of the route.
+- Each country's local arrival time is converted to UTC and the whole list
+  is sorted chronologically, bookended by two virtual "North Pole" stops -
+  this is what actually decides the order Santa visits countries in, which
+  doesn't stay neatly east-to-west since evening-24 and morning-25 countries
+  interleave.
+- Between two stops, position is interpolated along a great-circle path,
+  speed = leg distance ÷ leg duration, and altitude follows a climb
+  (first 15% of the leg) → cruise at a deliberately absurd 241,200 ft →
+  descend (last 15%) profile, the same shape a real flight's altitude
+  graph would have, just compressed.
+
+**Fireworks** - a quiet background layer of firework bursts appears for 5
+minutes starting at 00:00 on January 1st, local time. It sits behind the
+normal flight display rather than replacing it.
+
+**Testing without waiting for the actual date**: temporarily set the system
+clock forward **on the machine running Skywatch itself** (not the FR24Feed
+VM - that clock is irrelevant here), e.g.:
+
+```bash
+sudo date -s "2026-12-24 16:55:00"
+```
+
+Remember to set it back afterward (`sudo systemctl restart systemd-timesyncd`
+or `sudo hwclock -s`), since other things on the same host may also depend
+on the correct time.
+
 ## Limitations
 
 - "Estimated landing" is NOT pulled from a real schedule — it's distance
