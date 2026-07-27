@@ -63,10 +63,10 @@
   @media (max-width: 500px), (max-height: 400px) {
     .top-status, .signature { display: none; }
   }
-  .header-row { display: flex; align-items: center; justify-content: center; gap: clamp(28px, 4vw, 72px); }
+  .header-row { display: flex; align-items: center; justify-content: center; gap: clamp(20px, min(4vw, 5vh), 64px); }
   .logo-box {
-    width: clamp(130px, 16vw, 260px);
-    height: clamp(130px, 16vw, 260px);
+    width: clamp(90px, min(16vw, 18vh), 220px);
+    height: clamp(90px, min(16vw, 18vh), 220px);
     background: #fff;
     border-radius: 12px;
     display: flex;
@@ -78,15 +78,15 @@
   }
   .logo-box img { max-width: 90%; max-height: 90%; object-fit: contain; }
   .logo-box .no-logo-text { font-size: clamp(11px, 1.4vw, 18px); color: #555; text-align: center; }
-  .flight-number { font-size: clamp(56px, 11vw, 220px); font-weight: 700; line-height: 1.05; }
+  .flight-number { font-size: clamp(40px, min(9vw, 11vh), 160px); font-weight: 700; line-height: 1.05; }
   .flag-icon { font-size: 0.45em; vertical-align: middle; }
   .line {
-    font-size: clamp(32px, 6vw, 110px);
-    line-height: 1.5;
+    font-size: clamp(24px, min(5vw, 6.5vh), 84px);
+    line-height: 1.35;
     color: #fff;
   }
   .line.muted { color: #ccc; }
-  .line.small { font-size: clamp(24px, 4.4vw, 76px); color: #ccc; }
+  .line.small { font-size: clamp(18px, min(3.8vw, 5vh), 58px); color: #ccc; }
   .emergency-banner {
     background: #b00000;
     color: #fff;
@@ -95,7 +95,7 @@
     padding: clamp(12px, 2vh, 26px);
     border-radius: 10px;
     margin-bottom: clamp(20px, 3.4vh, 40px);
-    font-size: clamp(20px, 3.4vw, 56px);
+    font-size: clamp(16px, min(3.4vw, 4.5vh), 56px);
     letter-spacing: 0.04em;
     text-transform: uppercase;
     animation: emergency-pulse 1.2s infinite;
@@ -106,13 +106,13 @@
   }
   .big-state { text-align: center; }
   .big-state-title {
-    font-size: clamp(36px, 7vw, 130px);
+    font-size: clamp(28px, min(7vw, 14vh), 130px);
     font-weight: 700;
     color: #fff;
   }
   .big-state.error .big-state-title { color: #ff6b6b; }
   .big-state-sub {
-    font-size: clamp(16px, 2.4vw, 34px);
+    font-size: clamp(14px, min(2.4vw, 4vh), 34px);
     color: var(--muted);
     margin-top: clamp(10px, 2vh, 26px);
   }
