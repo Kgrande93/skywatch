@@ -209,9 +209,18 @@ function renderActive(ac) {
   html += '</div>';
 
   html += `<div class="line" style="margin-top: clamp(14px, 2.5vh, 28px);">${routeLine || 'Route unknown'}</div>`;
-  if (ac.aircraft_type) html += `<div class="line muted">${ac.aircraft_type}</div>`;
+  let typeLabel = null;
+  if (ac.is_military) typeLabel = 'Military aircraft';
+  else if (ac.category_label && (ac.category_always_show || !ac.airline_name)) typeLabel = ac.category_label;
+  const typeParts = [ac.aircraft_type, typeLabel].filter(Boolean);
+  if (typeParts.length) html += `<div class="line muted">${typeParts.join(' &middot; ')}</div>`;
 
-  const altStr = ac.altitude_ft != null ? `${Math.round(ac.altitude_ft)} ft` : '\u2013';
+  let altStr = ac.altitude_ft != null ? `${Math.round(ac.altitude_ft)} ft` : '\u2013';
+  if (ac.altitude_ft != null && ac.vertical_rate_fpm != null) {
+    if (ac.vertical_rate_fpm > 150) altStr += ' &#8593;';
+    else if (ac.vertical_rate_fpm < -150) altStr += ' &#8595;';
+    else altStr += ' &#8594;';
+  }
   const gsStr = ac.groundspeed_kt != null ? `${Math.round(ac.groundspeed_kt)} kt` : '\u2013';
   html += `<div class="line small" style="margin-top: clamp(10px, 2vh, 20px);">Alt: ${altStr} &middot; Spd: ${gsStr}</div>`;
 
