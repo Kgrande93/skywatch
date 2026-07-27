@@ -19,22 +19,43 @@
     background: #000;
     color: #fff;
     font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    padding: clamp(12px, 2.2vh, 26px) clamp(14px, 2.5vw, 36px);
+    gap: clamp(8px, 1.6vh, 20px);
+  }
+  .top-row, .bottom-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: clamp(12px, 3vw, 40px);
+    flex-wrap: wrap;
+  }
+  .bottom-row {
+    align-items: flex-end;
+  }
+  .main-area {
+    flex: 1;
+    min-height: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 100vh;
-    padding: 4vh 4vw;
-    user-select: none;
-    -webkit-user-select: none;
+    overflow: auto;
   }
   .card {
     max-width: 1600px;
     width: 100%;
   }
   .top-status-stack {
-    position: fixed;
-    top: clamp(12px, 2.2vh, 26px);
-    left: clamp(14px, 2.5vw, 36px);
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -61,29 +82,25 @@
     opacity: 0.8;
   }
   .corner-label {
-    position: fixed;
     font-size: clamp(10px, 1.1vw, 16px);
     color: var(--muted);
     opacity: 0.8;
     letter-spacing: 0.02em;
-    max-width: 46vw;
+    max-width: 32vw;
     line-height: 1.4;
     overflow-wrap: break-word;
   }
   .corner-label.top-right {
-    top: clamp(12px, 2.2vh, 26px);
-    right: clamp(14px, 2.5vw, 36px);
     text-align: right;
   }
   .corner-label.bottom-left {
-    bottom: clamp(12px, 2.2vh, 26px);
-    left: clamp(14px, 2.5vw, 36px);
     text-align: left;
   }
   .corner-label.bottom-right {
-    bottom: clamp(12px, 2.2vh, 26px);
-    right: clamp(14px, 2.5vw, 36px);
     text-align: right;
+  }
+  @media (max-width: 700px), (max-height: 500px) {
+    .corner-label, .top-status-stack { display: none; }
   }
   .header {
     display: flex;
@@ -317,7 +334,7 @@
     15% { opacity: 1; }
     100% { opacity: 0; height: 60px; }
   }
-  .card, .top-status-stack, .corner-label, .rotate-progress-track {
+  .page, .rotate-progress-track {
     position: relative;
     z-index: 1;
   }
@@ -327,27 +344,37 @@
 <body>
   <div id="snowLayer" class="snow-layer"></div>
   <div id="fireworksLayer" class="fireworks-layer"></div>
-  <div class="card">
-    <div class="top-status-stack">
-      <div class="top-status">
-        <span id="antennaDot" class="status-dot idle"></span>
-        <span id="antennaLabel" class="status-label">Connecting to antenna …</span>
+  <div class="page">
+    <div class="top-row">
+      <div class="top-status-stack">
+        <div class="top-status">
+          <span id="antennaDot" class="status-dot idle"></span>
+          <span id="antennaLabel" class="status-label">Connecting to antenna …</span>
+        </div>
+        <div class="top-status">
+          <span id="statusDot" class="status-dot idle"></span>
+          <span id="statusLabel" class="status-label">Connecting …</span>
+        </div>
       </div>
-      <div class="top-status">
-        <span id="statusDot" class="status-dot idle"></span>
-        <span id="statusLabel" class="status-label">Connecting …</span>
+      <div class="corner-label top-right">This is the aircraft you can see over the {{ region_text }} area right now.</div>
+    </div>
+
+    <div class="main-area">
+      <div class="card">
+        <div id="content"></div>
+        <div id="navRow" class="nav-row">
+          <button id="prevBtn" class="nav-arrow" onclick="navigatePrev()" aria-label="Previous aircraft">&#8249;</button>
+          <div id="dots" class="dots"></div>
+          <button id="nextBtn" class="nav-arrow" onclick="navigateNext()" aria-label="Next aircraft">&#8250;</button>
+        </div>
       </div>
     </div>
-    <div id="content"></div>
-    <div id="navRow" class="nav-row">
-      <button id="prevBtn" class="nav-arrow" onclick="navigatePrev()" aria-label="Previous aircraft">&#8249;</button>
-      <div id="dots" class="dots"></div>
-      <button id="nextBtn" class="nav-arrow" onclick="navigateNext()" aria-label="Next aircraft">&#8250;</button>
+
+    <div class="bottom-row">
+      <div class="corner-label bottom-left">ADS-B antenna is located in {{ antenna_location_text }}.</div>
+      <div class="corner-label bottom-right">Made by love in Nannestad, Norway &#127475;&#127476;</div>
     </div>
   </div>
-  <div class="corner-label top-right">This is the aircraft you can see over the {{ region_text }} area right now.</div>
-  <div class="corner-label bottom-left">ADS-B antenna is located in {{ antenna_location_text }}.</div>
-  <div class="corner-label bottom-right">Made by love in Nannestad, Norway &#127475;&#127476;</div>
   <div id="rotateProgressTrack" class="rotate-progress-track">
     <div id="rotateProgressBar" class="rotate-progress-bar"></div>
   </div>
