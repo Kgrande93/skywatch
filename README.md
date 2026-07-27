@@ -24,7 +24,7 @@ Skywatch has two separate pages, sharing the same live data:
   ‹ › arrows or the dots to jump to a specific aircraft manually — automatic
   rotation keeps running in the background and picks up from wherever you
   left it.
-- **`/kiosk`** — dense, FlightWall-inspired layout with larger text and
+- **`/kiosk`** — bold, minimal layout with larger text and
   simplified content (airport codes only, no full names), designed to be
   legible from a few meters away on a small always-on display. See
   "Running it on a screen" below for the physical setup this is built for.
