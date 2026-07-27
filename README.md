@@ -250,7 +250,7 @@ xset s off
 xset -dpms
 xset s noblank
 unclutter -idle 0.5 -root &
-chromium-browser --noerrdialogs --disable-infobars --kiosk http://skywatch.grandedata.no/kiosk
+chromium-browser --noerrdialogs --disable-infobars --kiosk http://<your-skywatch-host>/kiosk
 ```
 
 (swap the URL for wherever your own instance is running)
