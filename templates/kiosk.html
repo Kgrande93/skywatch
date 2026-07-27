@@ -43,7 +43,7 @@
     justify-content: center;
     overflow: auto;
   }
-  .card { max-width: 1800px; width: 100%; }
+  .card { max-width: 1800px; width: 100%; text-align: center; }
   .top-status {
     display: flex;
     align-items: center;
@@ -63,10 +63,10 @@
   @media (max-width: 500px), (max-height: 400px) {
     .top-status, .signature { display: none; }
   }
-  .header-row { display: flex; align-items: center; gap: clamp(24px, 3.4vw, 56px); }
+  .header-row { display: flex; align-items: center; justify-content: center; gap: clamp(28px, 4vw, 72px); }
   .logo-box {
-    width: clamp(110px, 14vw, 220px);
-    height: clamp(110px, 14vw, 220px);
+    width: clamp(130px, 16vw, 260px);
+    height: clamp(130px, 16vw, 260px);
     background: #fff;
     border-radius: 12px;
     display: flex;
@@ -78,15 +78,15 @@
   }
   .logo-box img { max-width: 90%; max-height: 90%; object-fit: contain; }
   .logo-box .no-logo-text { font-size: clamp(11px, 1.4vw, 18px); color: #555; text-align: center; }
-  .flight-number { font-size: clamp(48px, 9vw, 160px); font-weight: 700; line-height: 1.05; }
+  .flight-number { font-size: clamp(56px, 11vw, 220px); font-weight: 700; line-height: 1.05; }
   .flag-icon { font-size: 0.45em; vertical-align: middle; }
   .line {
-    font-size: clamp(28px, 5vw, 88px);
+    font-size: clamp(32px, 6vw, 110px);
     line-height: 1.5;
     color: #fff;
   }
   .line.muted { color: #ccc; }
-  .line.small { font-size: clamp(20px, 3.6vw, 58px); color: #ccc; }
+  .line.small { font-size: clamp(24px, 4.4vw, 76px); color: #ccc; }
   .emergency-banner {
     background: #b00000;
     color: #fff;
