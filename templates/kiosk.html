@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skywatch Kiosk</title>
+<style>
+  :root { --muted: #999; --accent: #00d4f0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    background: #000;
+    color: #fff;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 3vh 4vw;
+    cursor: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .card { max-width: 1000px; width: 100%; }
+  .top-status {
+    position: fixed;
+    top: 16px;
+    left: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .status-dot.live { background: #37e07a; box-shadow: 0 0 8px #37e07a; }
+  .status-dot.idle { background: var(--muted); }
+  .status-dot.error { background: #ff4d4d; box-shadow: 0 0 8px #ff4d4d; }
+  .status-label { font-size: 13px; color: var(--muted); opacity: 0.7; }
+  .signature {
+    position: fixed;
+    bottom: 14px;
+    right: 20px;
+    font-size: 12px;
+    color: var(--muted);
+    opacity: 0.5;
+  }
+  .header-row { display: flex; align-items: center; gap: clamp(20px, 3vw, 40px); }
+  .logo-box {
+    width: clamp(90px, 12vw, 160px);
+    height: clamp(90px, 12vw, 160px);
+    background: #fff;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+    padding: 10px;
+  }
+  .logo-box img { max-width: 90%; max-height: 90%; object-fit: contain; }
+  .logo-box .no-logo-text { font-size: clamp(11px, 1.4vw, 18px); color: #555; text-align: center; }
+  .flight-number { font-size: clamp(40px, 8vw, 110px); font-weight: 700; line-height: 1.05; }
+  .flag-icon { font-size: 0.45em; vertical-align: middle; }
+  .line {
+    font-size: clamp(24px, 4.4vw, 62px);
+    line-height: 1.5;
+    color: #fff;
+  }
+  .line.muted { color: #ccc; }
+  .line.small { font-size: clamp(18px, 3.2vw, 44px); color: #ccc; }
+  .emergency-banner {
+    background: #b00000;
+    color: #fff;
+    font-weight: 700;
+    text-align: center;
+    padding: clamp(10px, 1.8vh, 22px);
+    border-radius: 10px;
+    margin-bottom: clamp(18px, 3vh, 34px);
+    font-size: clamp(18px, 3vw, 42px);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    animation: emergency-pulse 1.2s infinite;
+  }
+  @keyframes emergency-pulse {
+    0%, 100% { background: #b00000; }
+    50% { background: #ff2020; }
+  }
+  .empty { color: var(--muted); font-size: clamp(20px, 3vw, 40px); text-align: center; }
+  .snow-layer, .fireworks-layer { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; display: none; }
+  .snow-layer.visible, .fireworks-layer.visible { display: block; }
+  .snowflake { position: absolute; top: -10px; background: #fff; border-radius: 50%; animation: snowfall linear infinite; }
+  @keyframes snowfall { from { transform: translateY(-10px); } to { transform: translateY(110vh); } }
+  .firework-burst { position: absolute; width: 3px; height: 3px; }
+  .firework-burst span {
+    position: absolute; left: 0; top: 0; width: 3px; height: 22px;
+    background: currentColor; border-radius: 2px; transform-origin: 1.5px 1.5px;
+    opacity: 0; animation: firework-spark 1.4s ease-out infinite;
+  }
+  @keyframes firework-spark { 0% { opacity: 0; height: 2px; } 15% { opacity: 1; } 100% { opacity: 0; height: 60px; } }
+  .card, .top-status, .signature { position: relative; z-index: 1; }
+</style>
+</head>
+<body>
+  <div id="snowLayer" class="snow-layer"></div>
+  <div id="fireworksLayer" class="fireworks-layer"></div>
+  <div class="top-status">
+    <span id="statusDot" class="status-dot idle"></span>
+    <span id="statusLabel" class="status-label">Connecting …</span>
+  </div>
+  <div class="card" id="content"></div>
+  <div class="signature">Made by love in Nannestad, Norway &#127475;&#127476;</div>
+
+<script>
+const ROTATE_MS = 10000;
+let currentList = [];
+let currentHex = null;
+
+const PLANE_ICON_SVG = '<span class="no-logo-text">Logo missing</span>';
+
+function handleLogoFailure(imgEl) {
+  const box = imgEl.closest('.logo-box');
+  if (box) box.innerHTML = PLANE_ICON_SVG;
+}
+function handleLogoLoad(imgEl) {
+  if (imgEl.naturalWidth === 0) handleLogoFailure(imgEl);
+}
+
+function flightLabel(ac) {
+  return ac.flight_iata || ac.flight_icao || ac.callsign || 'Unknown';
+}
+function isoToFlagEmoji(iso) {
+  if (!iso || iso.length !== 2) return '';
+  return String.fromCodePoint(...[...iso.toUpperCase()].map(c => 127397 + c.charCodeAt(0)));
+}
+function airportLabel(ap) {
+  if (!ap) return null;
+  const code = ap.iata_code;
+  const city = ap.municipality;
+  if (!code) return city || ap.name || null;
+  if (!city) return code;
+  const country = ap.country_name && ap.country_name !== "Norway" ? ap.country_name : null;
+  return country ? `${code} (${city}, ${country})` : `${code} (${city})`;
+}
+
+const EMERGENCY_SQUAWKS = { '7500': 'HIJACKING (SQUAWK 7500)', '7600': 'RADIO FAILURE (SQUAWK 7600)', '7700': 'EMERGENCY (SQUAWK 7700)' };
+const EMERGENCY_TYPES = {
+  'general': 'MAYDAY - GENERAL EMERGENCY', 'lifeguard': 'MEDICAL EMERGENCY (PAN PAN)',
+  'minfuel': 'FUEL EMERGENCY', 'nordo': 'RADIO FAILURE (NORDO)',
+  'unlawful': 'HIJACKING', 'downed': 'EMERGENCY LANDING/DOWNED',
+};
+function emergencyLabel(ac) {
+  if (ac.emergency && EMERGENCY_TYPES[ac.emergency]) return EMERGENCY_TYPES[ac.emergency];
+  if (ac.emergency) return `EMERGENCY (${ac.emergency.toUpperCase()})`;
+  if (ac.squawk && EMERGENCY_SQUAWKS[ac.squawk]) return EMERGENCY_SQUAWKS[ac.squawk];
+  return null;
+}
+function findEmergencyHex(list) {
+  const found = list.find(ac => emergencyLabel(ac));
+  return found ? found.hex : null;
+}
+
+const SLEIGH_ICON_SVG = '<svg width="70%" height="70%" viewBox="0 0 70 46"><path d="M8 34 Q6 20 20 18 L46 18 Q58 18 60 30 L60 34 Z" fill="#b00000" stroke="#7a0000" stroke-width="1.5"/><circle cx="18" cy="38" r="5" fill="#333"/><circle cx="50" cy="38" r="5" fill="#333"/><path d="M6 34 Q2 34 2 30" stroke="#7a0000" stroke-width="2" fill="none"/></svg>';
+
+function renderActive(ac) {
+  const origin = airportLabel(ac.origin);
+  const dest = airportLabel(ac.destination);
+  const sameAirport = ac.origin && ac.destination && ac.origin.iata_code === ac.destination.iata_code;
+  let routeLine = null;
+  if (!sameAirport) {
+    if (origin && dest) routeLine = `${origin} &rarr; ${dest}`;
+    else if (dest) routeLine = `to ${dest}`;
+  }
+
+  let html = '';
+  const emergency = emergencyLabel(ac);
+  if (emergency) html += `<div class="emergency-banner">&#9888; ${emergency}</div>`;
+
+  html += '<div class="header-row">';
+  if (ac.is_santa) {
+    html += `<div class="logo-box">${SLEIGH_ICON_SVG}</div>`;
+  } else if (ac.airline_logo) {
+    html += `<div class="logo-box"><img src="${ac.airline_logo}" alt="" onerror="handleLogoFailure(this)" onload="handleLogoLoad(this)"></div>`;
+  } else {
+    html += `<div class="logo-box">${PLANE_ICON_SVG}</div>`;
+  }
+  const flag = isoToFlagEmoji(ac.registration_country_iso);
+  const flightNumHtml = flag ? `<span class="flag-icon">${flag}</span> ${flightLabel(ac)}` : flightLabel(ac);
+  html += `<div><div class="flight-number">${flightNumHtml}</div></div>`;
+  html += '</div>';
+
+  html += `<div class="line" style="margin-top: clamp(14px, 2.5vh, 28px);">${routeLine || 'Route unknown'}</div>`;
+  if (ac.aircraft_type) html += `<div class="line muted">${ac.aircraft_type}</div>`;
+
+  const altStr = ac.altitude_ft != null ? `${Math.round(ac.altitude_ft)} ft` : '\u2013';
+  const gsStr = ac.groundspeed_kt != null ? `${Math.round(ac.groundspeed_kt)} kt` : '\u2013';
+  html += `<div class="line small" style="margin-top: clamp(10px, 2vh, 20px);">Alt: ${altStr} &middot; Spd: ${gsStr}</div>`;
+
+  const regParts = [ac.registration, ac.airline_name].filter(Boolean);
+  if (regParts.length) html += `<div class="line small">${regParts.join(' &middot; ')}</div>`;
+
+  const squawkStr = ac.squawk || '\u2013';
+  const squawkIsEmergency = ac.squawk && EMERGENCY_SQUAWKS[ac.squawk];
+  const squawkStyle = squawkIsEmergency ? ' style="color:#ff3b3b;font-weight:700;"' : '';
+  html += `<div class="line small"${squawkStyle}>Squawk: ${squawkStr}</div>`;
+
+  document.getElementById('content').innerHTML = html;
+}
+
+function showCurrent() {
+  if (currentList.length === 0) return;
+  let ac = currentList.find(a => a.hex === currentHex);
+  if (!ac) { ac = currentList[0]; currentHex = ac.hex; }
+  renderActive(ac);
+}
+
+function updateList(list) {
+  const emergencyHex = findEmergencyHex(list);
+  currentList = list;
+  if (emergencyHex) { currentHex = emergencyHex; showCurrent(); return; }
+  showCurrent();
+}
+
+setInterval(() => {
+  if (currentList.length > 1) {
+    if (findEmergencyHex(currentList)) return;
+    const idx = currentList.findIndex(a => a.hex === currentHex);
+    const nextIdx = idx === -1 ? 0 : (idx + 1) % currentList.length;
+    currentHex = currentList[nextIdx].hex;
+    showCurrent();
+  }
+}, ROTATE_MS);
+
+function render(data) {
+  const dot = document.getElementById('statusDot');
+  const label = document.getElementById('statusLabel');
+  const content = document.getElementById('content');
+
+  if (data.active && data.aircraft_list && data.aircraft_list.length > 0) {
+    dot.className = 'status-dot live';
+    label.textContent = `Tracking ${data.aircraft_list.length} aircraft`;
+    updateList(data.aircraft_list);
+  } else {
+    currentList = [];
+    currentHex = null;
+    dot.className = 'status-dot idle';
+    label.textContent = data.last ? 'No aircraft nearby' : 'No data yet';
+    content.innerHTML = '<div class="empty">Waiting for the first aircraft …</div>';
+  }
+
+  if (!data.antenna_connected) {
+    dot.className = 'status-dot error';
+    label.textContent = 'No antenna connection';
+  }
+}
+
+let snowGenerated = false;
+function updateSnow(show) {
+  const layer = document.getElementById('snowLayer');
+  if (show) {
+    layer.classList.add('visible');
+    if (!snowGenerated) {
+      for (let i = 0; i < 60; i++) {
+        const flake = document.createElement('div');
+        const size = 2 + Math.random() * 3;
+        flake.className = 'snowflake';
+        flake.style.left = `${Math.random() * 100}%`;
+        flake.style.width = `${size}px`;
+        flake.style.height = `${size}px`;
+        flake.style.opacity = (0.25 + Math.random() * 0.5).toFixed(2);
+        flake.style.animationDuration = `${8 + Math.random() * 8}s`;
+        flake.style.animationDelay = `${Math.random() * 10}s`;
+        layer.appendChild(flake);
+      }
+      snowGenerated = true;
+    }
+  } else {
+    layer.classList.remove('visible');
+  }
+}
+
+let fireworksGenerated = false;
+function updateFireworks(show) {
+  const layer = document.getElementById('fireworksLayer');
+  if (show) {
+    layer.classList.add('visible');
+    if (!fireworksGenerated) {
+      const colors = ['#ffb000', '#ff4d6d', '#37e0c8', '#c98bff', '#ffe066'];
+      for (let i = 0; i < 6; i++) {
+        const burst = document.createElement('div');
+        burst.className = 'firework-burst';
+        burst.style.left = `${10 + Math.random() * 80}%`;
+        burst.style.top = `${10 + Math.random() * 60}%`;
+        burst.style.color = colors[i % colors.length];
+        for (let r = 0; r < 8; r++) {
+          const spark = document.createElement('span');
+          spark.style.transform = `rotate(${45 * r}deg)`;
+          spark.style.animationDelay = `${Math.random() * 1.4}s`;
+          burst.appendChild(spark);
+        }
+        layer.appendChild(burst);
+      }
+      fireworksGenerated = true;
+    }
+  } else {
+    layer.classList.remove('visible');
+  }
+}
+
+async function poll() {
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json();
+    render(data);
+    updateSnow(!!data.show_snow);
+    updateFireworks(!!data.show_fireworks);
+  } catch (e) {
+    document.getElementById('statusDot').className = 'status-dot error';
+    document.getElementById('statusLabel').textContent = 'Connection lost';
+  }
+}
+
+poll();
+setInterval(poll, 1000);
+
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try { await navigator.wakeLock.request('screen'); } catch (e) {}
+}
+requestWakeLock();
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') requestWakeLock();
+});
+</script>
+</body>
+</html>

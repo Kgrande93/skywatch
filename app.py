@@ -585,6 +585,11 @@ def index():
     return render_template("index.html", region_text=REGION_TEXT, antenna_location_text=ANTENNA_LOCATION_TEXT)
 
 
+@app.route("/kiosk")
+def kiosk():
+    return render_template("kiosk.html", region_text=REGION_TEXT, antenna_location_text=ANTENNA_LOCATION_TEXT)
+
+
 @app.route("/api/status")
 def api_status():
     with _lock:
