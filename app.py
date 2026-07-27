@@ -322,8 +322,23 @@ def enrich(ac):
 
     operator_flag_code = aircraft_info.get("registered_owner_operator_flag_code") if aircraft_info else None
     best_operator_code = airline_icao or operator_flag_code
-    raw_name = (airline.get("name") if airline else None) or registered_owner
-    display_name = raw_name or (FALLBACK_OPERATOR_NAMES.get(best_operator_code.upper()) if best_operator_code else None)
+
+    # Two different quality levels get conflated if treated the same:
+    # - route_airline_name comes from the flightroute lookup and is always
+    #   a real, full company name when present - never touched.
+    # - registered_owner comes from the aircraft registry and can be a
+    #   bare/inconsistent string (e.g. "Wideroe") - so a known-operator
+    #   fallback name is preferred over it, and it's only used as the
+    #   final resort when nothing else is available.
+    route_airline_name = airline.get("name") if airline else None
+    fallback_name = FALLBACK_OPERATOR_NAMES.get(best_operator_code.upper()) if best_operator_code else None
+    display_name = route_airline_name or fallback_name or registered_owner
+    if not display_name:
+        # No name from any source - logged so real gaps in
+        # FALLBACK_OPERATOR_NAMES can be found from actual traffic
+        # instead of guessed at.
+        log.info("No airline name for callsign=%s operator_code=%s hex=%s",
+                  callsign, best_operator_code, ac.get("hex"))
 
     is_private_charter = bool(best_operator_code) and best_operator_code.upper() in PRIVATE_CHARTER_OPERATOR_CODES
     if is_private_charter:
