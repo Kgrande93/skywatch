@@ -43,7 +43,7 @@
     justify-content: center;
     overflow: auto;
   }
-  .card { max-width: 1000px; width: 100%; }
+  .card { max-width: 1800px; width: 100%; }
   .top-status {
     display: flex;
     align-items: center;
@@ -51,6 +51,7 @@
   }
   .status-dot { width: 10px; height: 10px; border-radius: 50%; }
   .status-dot.live { background: #37e07a; box-shadow: 0 0 8px #37e07a; }
+  .status-dot.waiting { background: #2e90ff; box-shadow: 0 0 8px #2e90ff; }
   .status-dot.idle { background: var(--muted); }
   .status-dot.error { background: #ff4d4d; box-shadow: 0 0 8px #ff4d4d; }
   .status-label { font-size: 13px; color: var(--muted); opacity: 0.7; }
@@ -62,10 +63,10 @@
   @media (max-width: 500px), (max-height: 400px) {
     .top-status, .signature { display: none; }
   }
-  .header-row { display: flex; align-items: center; gap: clamp(20px, 3vw, 40px); }
+  .header-row { display: flex; align-items: center; gap: clamp(24px, 3.4vw, 56px); }
   .logo-box {
-    width: clamp(90px, 12vw, 160px);
-    height: clamp(90px, 12vw, 160px);
+    width: clamp(110px, 14vw, 220px);
+    height: clamp(110px, 14vw, 220px);
     background: #fff;
     border-radius: 12px;
     display: flex;
@@ -77,24 +78,24 @@
   }
   .logo-box img { max-width: 90%; max-height: 90%; object-fit: contain; }
   .logo-box .no-logo-text { font-size: clamp(11px, 1.4vw, 18px); color: #555; text-align: center; }
-  .flight-number { font-size: clamp(40px, 8vw, 110px); font-weight: 700; line-height: 1.05; }
+  .flight-number { font-size: clamp(48px, 9vw, 160px); font-weight: 700; line-height: 1.05; }
   .flag-icon { font-size: 0.45em; vertical-align: middle; }
   .line {
-    font-size: clamp(24px, 4.4vw, 62px);
+    font-size: clamp(28px, 5vw, 88px);
     line-height: 1.5;
     color: #fff;
   }
   .line.muted { color: #ccc; }
-  .line.small { font-size: clamp(18px, 3.2vw, 44px); color: #ccc; }
+  .line.small { font-size: clamp(20px, 3.6vw, 58px); color: #ccc; }
   .emergency-banner {
     background: #b00000;
     color: #fff;
     font-weight: 700;
     text-align: center;
-    padding: clamp(10px, 1.8vh, 22px);
+    padding: clamp(12px, 2vh, 26px);
     border-radius: 10px;
-    margin-bottom: clamp(18px, 3vh, 34px);
-    font-size: clamp(18px, 3vw, 42px);
+    margin-bottom: clamp(20px, 3.4vh, 40px);
+    font-size: clamp(20px, 3.4vw, 56px);
     letter-spacing: 0.04em;
     text-transform: uppercase;
     animation: emergency-pulse 1.2s infinite;
@@ -103,7 +104,18 @@
     0%, 100% { background: #b00000; }
     50% { background: #ff2020; }
   }
-  .empty { color: var(--muted); font-size: clamp(20px, 3vw, 40px); text-align: center; }
+  .big-state { text-align: center; }
+  .big-state-title {
+    font-size: clamp(36px, 7vw, 130px);
+    font-weight: 700;
+    color: #fff;
+  }
+  .big-state.error .big-state-title { color: #ff6b6b; }
+  .big-state-sub {
+    font-size: clamp(16px, 2.4vw, 34px);
+    color: var(--muted);
+    margin-top: clamp(10px, 2vh, 26px);
+  }
   .snow-layer, .fireworks-layer { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; display: none; }
   .snow-layer.visible, .fireworks-layer.visible { display: block; }
   .snowflake { position: absolute; top: -10px; background: #fff; border-radius: 50%; animation: snowfall linear infinite; }
@@ -265,6 +277,15 @@ function render(data) {
   const label = document.getElementById('statusLabel');
   const content = document.getElementById('content');
 
+  if (!data.antenna_connected) {
+    currentList = [];
+    currentHex = null;
+    dot.className = 'status-dot error';
+    label.textContent = 'No antenna connection';
+    content.innerHTML = '<div class="big-state error"><div class="big-state-title">No antenna connection</div><div class="big-state-sub">Waiting to reconnect to the receiver …</div></div>';
+    return;
+  }
+
   if (data.active && data.aircraft_list && data.aircraft_list.length > 0) {
     dot.className = 'status-dot live';
     label.textContent = `Tracking ${data.aircraft_list.length} aircraft`;
@@ -272,14 +293,14 @@ function render(data) {
   } else {
     currentList = [];
     currentHex = null;
-    dot.className = 'status-dot idle';
-    label.textContent = data.last ? 'No aircraft nearby' : 'No data yet';
-    content.innerHTML = '<div class="empty">Waiting for the first aircraft …</div>';
-  }
-
-  if (!data.antenna_connected) {
-    dot.className = 'status-dot error';
-    label.textContent = 'No antenna connection';
+    dot.className = 'status-dot waiting';
+    const hasSeenBefore = !!data.last;
+    label.textContent = hasSeenBefore ? 'No aircraft nearby' : 'No data yet';
+    const title = hasSeenBefore ? 'No aircraft nearby' : 'Waiting for the first aircraft';
+    const sub = hasSeenBefore
+      ? 'Antenna connected — watching for the next one …'
+      : 'Antenna connected, listening for ADS-B signals …';
+    content.innerHTML = `<div class="big-state"><div class="big-state-title">${title}</div><div class="big-state-sub">${sub}</div></div>`;
   }
 }
 
