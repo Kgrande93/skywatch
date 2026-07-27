@@ -16,7 +16,7 @@
     align-items: center;
     justify-content: center;
     min-height: 100vh;
-    padding: 3vh 4vw;
+    padding: clamp(50px, 8vh, 80px) 4vw;
     cursor: none;
     user-select: none;
     -webkit-user-select: none;
@@ -42,6 +42,9 @@
     font-size: 12px;
     color: var(--muted);
     opacity: 0.5;
+  }
+  @media (max-width: 500px), (max-height: 400px) {
+    .top-status, .signature { display: none; }
   }
   .header-row { display: flex; align-items: center; gap: clamp(20px, 3vw, 40px); }
   .logo-box {
@@ -133,12 +136,7 @@ function isoToFlagEmoji(iso) {
 }
 function airportLabel(ap) {
   if (!ap) return null;
-  const code = ap.iata_code;
-  const city = ap.municipality;
-  if (!code) return city || ap.name || null;
-  if (!city) return code;
-  const country = ap.country_name && ap.country_name !== "Norway" ? ap.country_name : null;
-  return country ? `${code} (${city}, ${country})` : `${code} (${city})`;
+  return ap.iata_code || ap.municipality || ap.name || null;
 }
 
 const EMERGENCY_SQUAWKS = { '7500': 'HIJACKING (SQUAWK 7500)', '7600': 'RADIO FAILURE (SQUAWK 7600)', '7700': 'EMERGENCY (SQUAWK 7700)' };
@@ -183,8 +181,7 @@ function renderActive(ac) {
     html += `<div class="logo-box">${PLANE_ICON_SVG}</div>`;
   }
   const flag = isoToFlagEmoji(ac.registration_country_iso);
-  const flightNumHtml = flag ? `<span class="flag-icon">${flag}</span> ${flightLabel(ac)}` : flightLabel(ac);
-  html += `<div><div class="flight-number">${flightNumHtml}</div></div>`;
+  html += `<div><div class="flight-number">${flightLabel(ac)}</div></div>`;
   html += '</div>';
 
   html += `<div class="line" style="margin-top: clamp(14px, 2.5vh, 28px);">${routeLine || 'Route unknown'}</div>`;
@@ -194,7 +191,8 @@ function renderActive(ac) {
   const gsStr = ac.groundspeed_kt != null ? `${Math.round(ac.groundspeed_kt)} kt` : '\u2013';
   html += `<div class="line small" style="margin-top: clamp(10px, 2vh, 20px);">Alt: ${altStr} &middot; Spd: ${gsStr}</div>`;
 
-  const regParts = [ac.registration, ac.airline_name].filter(Boolean);
+  const regWithFlag = flag && ac.registration ? `${flag} ${ac.registration}` : ac.registration;
+  const regParts = [regWithFlag, ac.airline_name].filter(Boolean);
   if (regParts.length) html += `<div class="line small">${regParts.join(' &middot; ')}</div>`;
 
   const squawkStr = ac.squawk || '\u2013';
