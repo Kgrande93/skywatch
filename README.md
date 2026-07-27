@@ -15,6 +15,20 @@ somewhere on your network. If you don't have that running yet, see
 full setup guide (RTL2832U dongle + readsb + tar1090 + FlightRadar24 feeding
 on a Debian VM).
 
+## Two view modes
+
+Skywatch has two separate pages, sharing the same live data:
+
+- **`/`** — desktop view. Denser layout with more detail (full airport
+  names, all metrics), meant for a normal screen viewed up close. Click the
+  ‹ › arrows or the dots to jump to a specific aircraft manually — automatic
+  rotation keeps running in the background and picks up from wherever you
+  left it.
+- **`/kiosk`** — dense, FlightWall-inspired layout with larger text and
+  simplified content (airport codes only, no full names), designed to be
+  legible from a few meters away on a small always-on display. See
+  "Running it on a screen" below for the physical setup this is built for.
+
 ## Data source
 
 `readsb-install.sh` from wiedehopf/adsb-scripts installs tar1090
@@ -236,7 +250,7 @@ xset s off
 xset -dpms
 xset s noblank
 unclutter -idle 0.5 -root &
-chromium-browser --noerrdialogs --disable-infobars --kiosk http://skywatch.grandedata.no
+chromium-browser --noerrdialogs --disable-infobars --kiosk http://skywatch.grandedata.no/kiosk
 ```
 
 (swap the URL for wherever your own instance is running)
