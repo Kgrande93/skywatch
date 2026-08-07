@@ -526,10 +526,10 @@ function renderActive(ac) {
   const squawkIsEmergency = ac.squawk && EMERGENCY_SQUAWKS[ac.squawk];
   const squawkStyle = squawkIsEmergency ? ' style="color:#ff3b3b;font-weight:800;"' : '';
   html += '<div class="metrics">';
-  html += `<div><div class="metric-value">${altStr}</div><div class="metric-label">Altitude</div></div>`;
-  html += `<div><div class="metric-value">${gsStr}</div><div class="metric-label">Speed</div></div>`;
-  html += `<div><div class="metric-value">${distStr}</div><div class="metric-label">Distance</div></div>`;
-  html += `<div><div class="metric-value"${squawkStyle}>${squawkStr}</div><div class="metric-label">Squawk</div></div>`;
+  html += `<div><div class="metric-value">${altStr}</div><div class="metric-label">${T.stat_altitude}</div></div>`;
+  html += `<div><div class="metric-value">${gsStr}</div><div class="metric-label">${T.stat_speed}</div></div>`;
+  html += `<div><div class="metric-value">${distStr}</div><div class="metric-label">${T.stat_distance}</div></div>`;
+  html += `<div><div class="metric-value"${squawkStyle}>${squawkStr}</div><div class="metric-label">${T.stat_squawk}</div></div>`;
   html += '</div>';
 
   document.getElementById('content').innerHTML = html;

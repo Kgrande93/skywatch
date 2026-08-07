@@ -153,6 +153,8 @@ def save_settings():
         "language": form.get("language", "no"),
         "aircraft_json_url": form.get("aircraft_json_url", "").strip() or None,
         "timezone": form.get("timezone", "").strip() or None,
+        "port": int(form["port"]) if form.get("port", "").strip() else None,
+        "state_file": form.get("state_file", "").strip() or None,
     }
     # Only overwrite the secret if a new one was actually typed - the
     # dashboard shows a masked placeholder, not the real value, so an

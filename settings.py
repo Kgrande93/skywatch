@@ -33,6 +33,8 @@ DEFAULTS = {
     "max_range_km": None,      # falls back to MAX_RANGE_KM env var (default 70) when None
     "aircraft_json_url": None, # falls back to AIRCRAFT_JSON_URL env var when None
     "timezone": None,          # falls back to TIMEZONE env var (default Europe/Oslo) when None
+    "port": None,              # falls back to PORT env var (default 5000) when None - requires a restart to take effect
+    "state_file": None,        # falls back to STATE_FILE env var when None - requires a restart to take effect
     "ntfy_topic": "",
     "ntfy_server": "",  # e.g. https://ntfy.grandedata.no - falls back to https://ntfy.sh when empty
     "ntfy_messages_enabled": False,

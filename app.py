@@ -79,7 +79,11 @@ def get_timezone():
 SANTA_CRUISE_ALTITUDE_FT = 241200  # deliberately absurd - well past the Karman line
 SANTA_CLIMB_DESCEND_FRACTION = 0.15  # first/last 15% of each leg is climb/descent
 POLL_INTERVAL_SECONDS = int(os.environ.get("POLL_INTERVAL_SECONDS", "1"))
-STATE_FILE = os.environ.get("STATE_FILE", "/var/lib/skywatch/last_seen.json")
+STATE_FILE_ENV_DEFAULT = os.environ.get("STATE_FILE", "/var/lib/skywatch/last_seen.json")
+
+
+def get_state_file():
+    return settings_module.get_settings().get("state_file") or STATE_FILE_ENV_DEFAULT
 DISTANCE_LOG_FILE = os.environ.get("DISTANCE_LOG_FILE", "/var/lib/skywatch/distance_log.jsonl")
 ADSBDB_BASE = os.environ.get("ADSBDB_BASE", "https://api.adsbdb.com/v0")
 AIRHEX_APIKEY = os.environ.get("AIRHEX_APIKEY", "")  # optional, blank = free/watermarked tier
@@ -156,21 +160,21 @@ def haversine_km(lat1, lon1, lat2, lon2):
 
 def load_state_file():
     try:
-        with open(STATE_FILE, "r") as f:
+        with open(get_state_file(), "r") as f:
             data = json.load(f)
             with _lock:
                 _state["last"] = data
-            log.info("Loaded last-seen state from %s", STATE_FILE)
+            log.info("Loaded last-seen state from %s", get_state_file())
     except FileNotFoundError:
-        log.info("No existing state file at %s, starting fresh", STATE_FILE)
+        log.info("No existing state file at %s, starting fresh", get_state_file())
     except Exception as e:
         log.warning("Could not load state file: %s", e)
 
 
 def save_state_file():
     try:
-        os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
-        with open(STATE_FILE, "w") as f:
+        os.makedirs(os.path.dirname(get_state_file()), exist_ok=True)
+        with open(get_state_file(), "w") as f:
             json.dump(_state["last"], f)
     except Exception as e:
         log.warning("Could not save state file: %s", e)
@@ -839,4 +843,5 @@ if __name__ == "__main__":
                     "Set them to your antenna's actual coordinates.")
     t = threading.Thread(target=poll_loop, daemon=True)
     t.start()
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")))
+    _port = int(settings_module.get_settings().get("port") or os.environ.get("PORT", "5000"))
+    app.run(host="0.0.0.0", port=_port)

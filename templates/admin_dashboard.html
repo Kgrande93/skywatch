@@ -7,7 +7,7 @@
 <style>
   body{ font-family:system-ui,sans-serif; background:#0b0d10; color:#f2f5f7; margin:0; padding:32px; }
   .wrap{ max-width:680px; margin:0 auto; }
-  h1{ font-size:20px; } h2{ font-size:14px; color:#8a94a0; margin-top:32px; text-transform:uppercase; letter-spacing:0.05em; }
+  h1{ font-size:20px; } h2{ font-size:14px; color:#8a94a0; margin-top:0; text-transform:uppercase; letter-spacing:0.05em; }
   fieldset{ border:1px solid #242b31; border-radius:10px; padding:18px 20px; margin-top:10px; }
   label{ display:block; font-size:13px; color:#8a94a0; margin-top:12px; }
   input[type=text], input[type=password], input[type=number], select{
@@ -49,6 +49,21 @@
   .intro-card h2{ margin-top:0; font-size:18px; color:#f2f5f7; text-transform:none; letter-spacing:normal; }
   .intro-card p{ font-size:13.5px; color:#c7ced4; line-height:1.6; }
   .intro-card button{ margin-top:16px; }
+
+  /* ---- tab navigation ---- */
+  .tabs{ display:flex; gap:4px; margin-top:20px; border-bottom:1px solid #242b31; flex-wrap:wrap; }
+  .tab-btn{
+    background:none; border:none; color:#8a94a0; font-size:13px; font-weight:600;
+    padding:10px 14px; margin:0; cursor:pointer; border-bottom:2px solid transparent;
+    border-radius:0;
+  }
+  .tab-btn.active{ color:#3ddc84; border-bottom-color:#3ddc84; }
+  .tab-panel{ display:none; margin-top:18px; }
+  .tab-panel.active{ display:block; }
+
+  .restart-note{
+    font-size:11.5px; color:#ffb454; margin-top:6px; display:flex; align-items:center; gap:5px;
+  }
 </style>
 </head>
 <body>
@@ -74,125 +89,167 @@ document.getElementById('introDismiss').addEventListener('click', () => {
   <h1>{{ t.admin_title }}</h1>
   <div id="activeSourceBadge" style="display:inline-block; font-size:12px; padding:4px 10px;
        border-radius:999px; background:rgba(61,220,132,0.12); border:1px solid rgba(61,220,132,0.35);
-       color:#3ddc84; margin-bottom:8px;">{{ t.admin_currently_active }}: —</div>
+       color:#3ddc84; margin-bottom:0;">{{ t.admin_currently_active }}: —</div>
+
+  <div class="tabs" id="tabs">
+    <button type="button" class="tab-btn" data-tab="source">{{ t.admin_data_source }}</button>
+    <button type="button" class="tab-btn" data-tab="area">{{ t.admin_area }}</button>
+    <button type="button" class="tab-btn" data-tab="notif">{{ t.admin_notifications }}</button>
+    <button type="button" class="tab-btn" data-tab="display">{{ t.admin_display }}</button>
+    <button type="button" class="tab-btn" data-tab="advanced">{{ t.admin_advanced }}</button>
+    <button type="button" class="tab-btn" data-tab="password">{{ t.admin_password_section }}</button>
+  </div>
 
   <form method="post" action="{{ url_for('admin.save_settings') }}">
-    <h2>{{ t.admin_data_source }}</h2>
-    <fieldset>
-      <label>{{ t.admin_data_source }}</label>
-      <select name="data_source">
-        <option value="local" {% if settings.data_source == 'local' %}selected{% endif %}>{{ t.admin_source_local }}</option>
-        <option value="opensky_own" {% if settings.data_source == 'opensky_own' %}selected{% endif %}>{{ t.admin_source_opensky_own }}</option>
-        <option value="opensky_all" {% if settings.data_source == 'opensky_all' %}selected{% endif %}>{{ t.admin_source_opensky_all }}</option>
-      </select>
 
-      <label>{{ t.admin_opensky_client_id }}</label>
-      <input type="text" name="opensky_client_id" value="{{ settings.opensky_client_id }}">
-      <label>{{ t.admin_opensky_client_secret }}</label>
-      <input type="password" name="opensky_client_secret" placeholder="{{ '••••••••' if settings.opensky_client_secret else '' }}">
+    <div class="tab-panel" id="tab-source">
+      <fieldset>
+        <label>{{ t.admin_data_source }}</label>
+        <select name="data_source">
+          <option value="local" {% if settings.data_source == 'local' %}selected{% endif %}>{{ t.admin_source_local }}</option>
+          <option value="opensky_own" {% if settings.data_source == 'opensky_own' %}selected{% endif %}>{{ t.admin_source_opensky_own }}</option>
+          <option value="opensky_all" {% if settings.data_source == 'opensky_all' %}selected{% endif %}>{{ t.admin_source_opensky_all }}</option>
+        </select>
 
-      <label>{{ t.admin_opensky_tier }}</label>
-      <select name="opensky_tier" id="tier">
-        <option value="anonymous" {% if settings.opensky_tier == 'anonymous' %}selected{% endif %}>{{ t.admin_tier_anonymous }}</option>
-        <option value="registered" {% if settings.opensky_tier == 'registered' %}selected{% endif %}>{{ t.admin_tier_registered }}</option>
-        <option value="feeder" {% if settings.opensky_tier == 'feeder' %}selected{% endif %}>{{ t.admin_tier_feeder }}</option>
-      </select>
+        <label>{{ t.admin_opensky_client_id }}</label>
+        <input type="text" name="opensky_client_id" value="{{ settings.opensky_client_id }}">
+        <label>{{ t.admin_opensky_client_secret }}</label>
+        <input type="password" name="opensky_client_secret" placeholder="{{ '••••••••' if settings.opensky_client_secret else '' }}">
 
-      <div id="localOnlySection">
-        <label>{{ t.admin_max_range }}</label>
-        <input type="number" name="max_range_km" min="1" step="1" value="{{ settings.max_range_km or 70 }}" id="maxRangeInput">
-        <div class="field-note">{{ t.admin_max_range_note }}</div>
+        <label>{{ t.admin_opensky_tier }}</label>
+        <select name="opensky_tier" id="tier">
+          <option value="anonymous" {% if settings.opensky_tier == 'anonymous' %}selected{% endif %}>{{ t.admin_tier_anonymous }}</option>
+          <option value="registered" {% if settings.opensky_tier == 'registered' %}selected{% endif %}>{{ t.admin_tier_registered }}</option>
+          <option value="feeder" {% if settings.opensky_tier == 'feeder' %}selected{% endif %}>{{ t.admin_tier_feeder }}</option>
+        </select>
 
-        <label>{{ t.admin_local_url }}</label>
-        <input type="text" name="aircraft_json_url" value="{{ settings.aircraft_json_url or '' }}" placeholder="http://127.0.0.1/tar1090/data/aircraft.json" id="localUrlInput">
-        <div class="field-note">{{ t.admin_local_url_note }}</div>
-      </div>
-    </fieldset>
+        <div id="localOnlySection">
+          <label>{{ t.admin_max_range }}</label>
+          <input type="number" name="max_range_km" min="1" step="1" value="{{ settings.max_range_km or 70 }}" id="maxRangeInput">
+          <div class="field-note">{{ t.admin_max_range_note }}</div>
 
-    <h2>{{ t.admin_area }}</h2>
-
-    <fieldset id="areaFieldset">
-      <label style="margin-top:0">{{ t.admin_receiver_position }}</label>
-      <div id="map"></div>
-      <div class="field-note">{{ t.admin_receiver_position_note }}</div>
-      <div class="row2">
-        <div>
-          <label>{{ t.admin_latitude }}</label>
-          <input type="text" id="latInput" inputmode="decimal">
+          <label>{{ t.admin_local_url }}</label>
+          <input type="text" name="aircraft_json_url" value="{{ settings.aircraft_json_url or '' }}" placeholder="http://127.0.0.1/tar1090/data/aircraft.json" id="localUrlInput">
+          <div class="field-note">{{ t.admin_local_url_note }}</div>
         </div>
-        <div>
-          <label>{{ t.admin_longitude }}</label>
-          <input type="text" id="lonInput" inputmode="decimal">
+      </fieldset>
+    </div>
+
+    <div class="tab-panel" id="tab-area">
+      <fieldset id="areaFieldset">
+        <label style="margin-top:0">{{ t.admin_receiver_position }}</label>
+        <div id="map"></div>
+        <div class="field-note">{{ t.admin_receiver_position_note }}</div>
+        <div class="row2">
+          <div>
+            <label>{{ t.admin_latitude }}</label>
+            <input type="text" id="latInput" inputmode="decimal">
+          </div>
+          <div>
+            <label>{{ t.admin_longitude }}</label>
+            <input type="text" id="lonInput" inputmode="decimal">
+          </div>
         </div>
-      </div>
 
-      <div id="radiusSection">
-        <div class="slider-row">
-          <div class="slider-label"><span>{{ t.admin_radius }}</span><b id="radiusLabel">25 km</b></div>
-          <input type="range" id="radiusSlider" min="5" max="500" value="{{ settings.area_radius_km or 25 }}">
+        <div id="radiusSection">
+          <div class="slider-row">
+            <div class="slider-label"><span>{{ t.admin_radius }}</span><b id="radiusLabel">25 km</b></div>
+            <input type="range" id="radiusSlider" min="5" max="500" value="{{ settings.area_radius_km or 25 }}">
+          </div>
+          <div class="stats">
+            <div class="stat"><div class="num" id="statArea">–</div><div class="lbl">{{ t.admin_stat_area }}</div></div>
+            <div class="stat"><div class="num" id="statCredits">–</div><div class="lbl">{{ t.admin_stat_credits }}</div></div>
+            <div class="stat"><div class="num" id="statInterval">–</div><div class="lbl">{{ t.admin_stat_interval }}</div></div>
+          </div>
+          <div class="warning" id="warning">{{ t.admin_area_warning }}</div>
         </div>
-        <div class="stats">
-          <div class="stat"><div class="num" id="statArea">–</div><div class="lbl">{{ t.admin_stat_area }}</div></div>
-          <div class="stat"><div class="num" id="statCredits">–</div><div class="lbl">{{ t.admin_stat_credits }}</div></div>
-          <div class="stat"><div class="num" id="statInterval">–</div><div class="lbl">{{ t.admin_stat_interval }}</div></div>
+        <input type="hidden" id="centerLat" name="area_center_lat" value="{{ settings.area_center_lat }}">
+        <input type="hidden" id="centerLon" name="area_center_lon" value="{{ settings.area_center_lon }}">
+        <input type="hidden" id="radiusKm" name="area_radius_km" value="{{ settings.area_radius_km or 25 }}">
+      </fieldset>
+    </div>
+
+    <div class="tab-panel" id="tab-notif">
+      <fieldset>
+        <label>{{ t.admin_ntfy_server }}</label>
+        <input type="text" name="ntfy_server" value="{{ settings.ntfy_server }}" placeholder="https://ntfy.sh">
+        <label>{{ t.admin_ntfy_topic }}</label>
+        <input type="text" name="ntfy_topic" value="{{ settings.ntfy_topic }}">
+        <div class="checkbox-row">
+          <input type="checkbox" name="ntfy_messages_enabled" {% if settings.ntfy_messages_enabled %}checked{% endif %}>
+          <label style="margin:0">{{ t.admin_ntfy_messages_enabled }}</label>
         </div>
-        <div class="warning" id="warning">{{ t.admin_area_warning }}</div>
-      </div>
-      <input type="hidden" id="centerLat" name="area_center_lat" value="{{ settings.area_center_lat }}">
-      <input type="hidden" id="centerLon" name="area_center_lon" value="{{ settings.area_center_lon }}">
-      <input type="hidden" id="radiusKm" name="area_radius_km" value="{{ settings.area_radius_km or 25 }}">
-    </fieldset>
+        <div class="checkbox-row">
+          <input type="checkbox" name="ntfy_emergency_squawk_enabled" {% if settings.ntfy_emergency_squawk_enabled %}checked{% endif %}>
+          <label style="margin:0">{{ t.admin_ntfy_emergency_enabled }}</label>
+        </div>
+      </fieldset>
+    </div>
 
-    <h2>{{ t.admin_notifications }}</h2>
-    <fieldset>
-      <label>{{ t.admin_ntfy_server }}</label>
-      <input type="text" name="ntfy_server" value="{{ settings.ntfy_server }}" placeholder="https://ntfy.sh">
-      <label>{{ t.admin_ntfy_topic }}</label>
-      <input type="text" name="ntfy_topic" value="{{ settings.ntfy_topic }}">
-      <div class="checkbox-row">
-        <input type="checkbox" name="ntfy_messages_enabled" {% if settings.ntfy_messages_enabled %}checked{% endif %}>
-        <label style="margin:0">{{ t.admin_ntfy_messages_enabled }}</label>
-      </div>
-      <div class="checkbox-row">
-        <input type="checkbox" name="ntfy_emergency_squawk_enabled" {% if settings.ntfy_emergency_squawk_enabled %}checked{% endif %}>
-        <label style="margin:0">{{ t.admin_ntfy_emergency_enabled }}</label>
-      </div>
-    </fieldset>
+    <div class="tab-panel" id="tab-display">
+      <fieldset>
+        <label>{{ t.admin_brightness }}</label>
+        <input type="number" name="brightness" min="0" max="100" value="{{ settings.brightness }}">
+        <div class="field-note">{{ t.admin_brightness_note }}</div>
+        <label>{{ t.admin_timezone }}</label>
+        <input type="text" name="timezone" value="{{ settings.timezone or '' }}" placeholder="Europe/Oslo">
+        <div class="field-note">{{ t.admin_timezone_note }}</div>
 
-    <h2>{{ t.admin_display }}</h2>
-    <fieldset>
-      <label>{{ t.admin_brightness }}</label>
-      <input type="number" name="brightness" min="0" max="100" value="{{ settings.brightness }}">
-      <div class="field-note">{{ t.admin_brightness_note }}</div>
-      <label>{{ t.admin_timezone }}</label>
-      <input type="text" name="timezone" value="{{ settings.timezone or '' }}" placeholder="Europe/Oslo">
-      <div class="field-note">{{ t.admin_timezone_note }}</div>
+        <label>{{ t.admin_language }}</label>
+        <select name="language">
+          {% for code in supported_langs %}
+          <option value="{{ code }}" {% if lang == code %}selected{% endif %}>{{ 'Norsk' if code == 'no' else 'English' }}</option>
+          {% endfor %}
+        </select>
+      </fieldset>
+    </div>
 
-      <label>{{ t.admin_language }}</label>
-      <select name="language">
-        {% for code in supported_langs %}
-        <option value="{{ code }}" {% if lang == code %}selected{% endif %}>{{ 'Norsk' if code == 'no' else 'English' }}</option>
-        {% endfor %}
-      </select>
-    </fieldset>
+    <div class="tab-panel" id="tab-advanced">
+      <fieldset>
+        <label>{{ t.admin_port }}</label>
+        <input type="number" name="port" min="1" max="65535" value="{{ settings.port or 5000 }}">
+        <div class="restart-note">⚠ {{ t.admin_restart_required }}</div>
+
+        <label>{{ t.admin_state_file }}</label>
+        <input type="text" name="state_file" value="{{ settings.state_file or '' }}" placeholder="/var/lib/skywatch/last_seen.json">
+        <div class="restart-note">⚠ {{ t.admin_restart_required }}</div>
+      </fieldset>
+    </div>
 
     <button type="submit">{{ t.admin_save }}</button>
   </form>
 
-  <h2>{{ t.admin_password_section }}</h2>
-  <form method="post" action="{{ url_for('admin.change_password') }}">
-    <fieldset>
-      {% if password_error %}<div style="color:#ff4d4d; font-size:12.5px; margin-bottom:10px;">{{ password_error }}</div>{% endif %}
-      <label>{{ t.admin_current_password }}</label>
-      <input type="password" name="current_password" required>
-      <label>{{ t.admin_new_password }}</label>
-      <input type="password" name="new_password" required minlength="8">
-      <label>{{ t.admin_confirm_password }}</label>
-      <input type="password" name="confirm_password" required minlength="8">
-    </fieldset>
-    <button type="submit">{{ t.admin_change_password }}</button>
-  </form>
+  <div class="tab-panel" id="tab-password">
+    <form method="post" action="{{ url_for('admin.change_password') }}">
+      <fieldset>
+        {% if password_error %}<div style="color:#ff4d4d; font-size:12.5px; margin-bottom:10px;">{{ password_error }}</div>{% endif %}
+        <label>{{ t.admin_current_password }}</label>
+        <input type="password" name="current_password" required>
+        <label>{{ t.admin_new_password }}</label>
+        <input type="password" name="new_password" required minlength="8">
+        <label>{{ t.admin_confirm_password }}</label>
+        <input type="password" name="confirm_password" required minlength="8">
+      </fieldset>
+      <button type="submit">{{ t.admin_change_password }}</button>
+    </form>
+  </div>
 </div>
+
+<script>
+// ---- tab switching ----
+const tabButtons = document.querySelectorAll('.tab-btn');
+const tabPanels = document.querySelectorAll('.tab-panel');
+function activateTab(name){
+  tabButtons.forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  tabPanels.forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+  try { localStorage.setItem('skywatchAdminTab', name); } catch(e){}
+}
+tabButtons.forEach(b => b.addEventListener('click', () => activateTab(b.dataset.tab)));
+let startTab = 'source';
+try { startTab = localStorage.getItem('skywatchAdminTab') || 'source'; } catch(e){}
+if (![...tabButtons].some(b => b.dataset.tab === startTab)) startTab = 'source';
+activateTab(startTab);
+</script>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -280,18 +337,11 @@ function updateSourceUI(){
   tierSelect.disabled = (source === 'local');
   tierSelect.style.opacity = (source === 'local') ? '0.4' : '1';
 
-  // The marker/position is always relevant (used for distance math
-  // regardless of source) - only the radius slider and credit stats are
-  // specific to the OpenSky area query, so only that sub-section is greyed out.
   const areaMatters = (source === 'opensky_all');
   const radiusSection = document.getElementById('radiusSection');
   radiusSection.style.opacity = areaMatters ? '1' : '0.4';
   radiusSection.style.pointerEvents = areaMatters ? 'auto' : 'none';
 
-  // Max range / local URL only make sense for local antenna mode - for
-  // OpenSky, range is already defined by the radius (area query) or the
-  // receiver's own physical coverage (own receiver), so this would just
-  // be a second, conflicting definition of "range".
   const isLocal = (source === 'local');
   const localSection = document.getElementById('localOnlySection');
   localSection.style.opacity = isLocal ? '1' : '0.4';

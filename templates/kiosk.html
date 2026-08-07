@@ -243,7 +243,7 @@ function renderActive(ac) {
     else altStr += ' &#8594;';
   }
   const gsStr = ac.groundspeed_kt != null ? `${Math.round(ac.groundspeed_kt)} kt` : '\u2013';
-  html += `<div class="line small" style="margin-top: clamp(10px, 2vh, 20px);">Alt: ${altStr} &middot; Spd: ${gsStr}</div>`;
+  html += `<div class="line small" style="margin-top: clamp(10px, 2vh, 20px);">${T.stat_altitude}: ${altStr} &middot; ${T.stat_speed}: ${gsStr}</div>`;
 
   const regWithFlag = flag && ac.registration ? `${flag} ${ac.registration}` : ac.registration;
   const regParts = [regWithFlag, ac.airline_name].filter(Boolean);
@@ -252,7 +252,7 @@ function renderActive(ac) {
   const squawkStr = ac.squawk || '\u2013';
   const squawkIsEmergency = ac.squawk && EMERGENCY_SQUAWKS[ac.squawk];
   const squawkStyle = squawkIsEmergency ? ' style="color:#ff3b3b;font-weight:700;"' : '';
-  html += `<div class="line small"${squawkStyle}>Squawk: ${squawkStr}</div>`;
+  html += `<div class="line small"${squawkStyle}>${T.stat_squawk}: ${squawkStr}</div>`;
 
   document.getElementById('content').innerHTML = html;
 }
