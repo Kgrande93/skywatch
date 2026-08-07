@@ -74,7 +74,14 @@ def _subscribe_loop(topic):
     while True:
         url = f"{_ntfy_base()}/{topic}/sse"
         try:
-            with requests.get(url, stream=True, timeout=(5, None)) as resp:
+            # (connect_timeout, read_timeout) - without a read timeout, a
+            # connection that stalls without cleanly closing (common after
+            # network blips) hangs indefinitely instead of reconnecting,
+            # which is what caused the long delay before a message showed
+            # up. ntfy sends a keepalive at least every ~45s, so 60s means
+            # one missed keepalive triggers a reconnect instead of a
+            # silent, unbounded wait.
+            with requests.get(url, stream=True, timeout=(5, 60)) as resp:
                 for line in resp.iter_lines():
                     if not line:
                         continue
