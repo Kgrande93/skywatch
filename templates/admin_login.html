@@ -17,10 +17,10 @@
 </head>
 <body>
 <form method="post">
-  <h1>Skywatch Admin</h1>
+  <h1>{{ t.admin_title }}</h1>
   {% if error %}<div class="error">{{ error }}</div>{% endif %}
-  <input type="password" name="password" placeholder="Admin password" autofocus required>
-  <button type="submit">Log in</button>
+  <input type="password" name="password" placeholder="{{ t.admin_login_placeholder }}" autofocus required>
+  <button type="submit">{{ t.admin_login_button }}</button>
 </form>
 </body>
 </html>

@@ -272,23 +272,30 @@ setInterval(() => {
   }
 }, ROTATE_MS);
 
+const SOURCE_LABELS = {
+  'local': 'Local antenna',
+  'opensky_own': 'OpenSky (own receiver)',
+  'opensky_all': 'OpenSky (area)',
+};
+
 function render(data) {
   const dot = document.getElementById('statusDot');
   const label = document.getElementById('statusLabel');
   const content = document.getElementById('content');
+  const sourceLabel = SOURCE_LABELS[data.data_source] || 'Antenna';
 
   if (!data.antenna_connected) {
     currentList = [];
     currentHex = null;
     dot.className = 'status-dot error';
-    label.textContent = 'No antenna connection';
+    label.textContent = `No connection: ${sourceLabel}`;
     content.innerHTML = '<div class="big-state error"><div class="big-state-title">No antenna connection</div><div class="big-state-sub">Waiting to reconnect to the receiver …</div></div>';
     return;
   }
 
   if (data.active && data.aircraft_list && data.aircraft_list.length > 0) {
     dot.className = 'status-dot live';
-    label.textContent = `Tracking ${data.aircraft_list.length} aircraft`;
+    label.textContent = `Tracking ${data.aircraft_list.length} aircraft · ${sourceLabel}`;
     updateList(data.aircraft_list);
   } else {
     currentList = [];

@@ -26,6 +26,7 @@ DEFAULTS = {
     "ntfy_messages_enabled": False,
     "ntfy_emergency_squawk_enabled": False,
     "brightness": 80,
+    "language": "no",  # "no" | "en" - shared by both the screen displays and this admin panel
 }
 
 

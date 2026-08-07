@@ -38,11 +38,14 @@
 </head>
 <body>
 <div class="wrap">
-  <a class="logout" href="{{ url_for('admin.logout') }}">Log out</a>
-  <h1>Skywatch Admin</h1>
+  <a class="logout" href="{{ url_for('admin.logout') }}">{{ t.admin_logout }}</a>
+  <h1>{{ t.admin_title }}</h1>
+  <div id="activeSourceBadge" style="display:inline-block; font-size:12px; padding:4px 10px;
+       border-radius:999px; background:rgba(61,220,132,0.12); border:1px solid rgba(61,220,132,0.35);
+       color:#3ddc84; margin-bottom:8px;">{{ t.admin_currently_active }}: —</div>
 
   <form method="post" action="{{ url_for('admin.save_settings') }}">
-    <h2>Data source</h2>
+    <h2>{{ t.admin_data_source }}</h2>
     <fieldset>
       <label>Source</label>
       <select name="data_source">
@@ -64,7 +67,7 @@
       </select>
     </fieldset>
 
-    <h2>Area (only used for "OpenSky — area query")</h2>
+    <h2>{{ t.admin_area }}</h2>
     <fieldset>
       <div id="map"></div>
       <div class="slider-row">
@@ -72,24 +75,17 @@
         <input type="range" id="radiusSlider" min="5" max="500" value="{{ settings.area_radius_km or 25 }}">
       </div>
       <div class="stats">
-        <div class="stat"><div class="num" id="statArea">–</div><div class="lbl">sq° area</div></div>
+        <div class="stat"><div class="num" id="statArea">–</div><div class="lbl">km² area</div></div>
         <div class="stat"><div class="num" id="statCredits">–</div><div class="lbl">credits/call</div></div>
         <div class="stat"><div class="num" id="statInterval">–</div><div class="lbl">sec/update</div></div>
       </div>
-      <div class="warning" id="warning">
-        You've selected a larger area than the recommended 25 km radius.
-        This costs more credits per update, which means the display will
-        refresh less often to make your daily quota last a full day. For
-        most local flight-spotting use, 25 km already covers a generous
-        radius — a bigger area mainly helps if you want to catch high-altitude
-        traffic passing further out.
-      </div>
+      <div class="warning" id="warning">{{ t.admin_area_warning }}</div>
       <input type="hidden" id="centerLat" name="area_center_lat" value="{{ settings.area_center_lat }}">
       <input type="hidden" id="centerLon" name="area_center_lon" value="{{ settings.area_center_lon }}">
       <input type="hidden" id="radiusKm" name="area_radius_km" value="{{ settings.area_radius_km or 25 }}">
     </fieldset>
 
-    <h2>Notifications</h2>
+    <h2>{{ t.admin_notifications }}</h2>
     <fieldset>
       <label>Ntfy topic</label>
       <input type="text" name="ntfy_topic" value="{{ settings.ntfy_topic }}">
@@ -103,13 +99,19 @@
       </div>
     </fieldset>
 
-    <h2>Display</h2>
+    <h2>{{ t.admin_display }}</h2>
     <fieldset>
       <label>Brightness (0-100)</label>
       <input type="number" name="brightness" min="0" max="100" value="{{ settings.brightness }}">
+      <label>Language / Språk</label>
+      <select name="language">
+        {% for code in supported_langs %}
+        <option value="{{ code }}" {% if lang == code %}selected{% endif %}>{{ 'Norsk' if code == 'no' else 'English' }}</option>
+        {% endfor %}
+      </select>
     </fieldset>
 
-    <button type="submit">Save settings</button>
+    <button type="submit">{{ t.admin_save }}</button>
   </form>
 </div>
 
@@ -154,12 +156,33 @@ function updateEstimate(){
     body: JSON.stringify({ center_lat: c.lat, center_lon: c.lng, radius_km: radiusKm, tier: tierSelect.value })
   }).then(r => r.json()).then(d => {
     if (d.error) return;
-    document.getElementById('statArea').textContent = d.area_sq_deg;
+    document.getElementById('statArea').textContent = d.area_km2.toLocaleString();
     document.getElementById('statCredits').textContent = d.credits_per_call;
     document.getElementById('statInterval').textContent = d.recommended_interval_seconds;
     warning.classList.toggle('show', d.over_recommended);
   }).catch(() => {});
 }
+
+const dataSourceSelect = document.querySelector('select[name="data_source"]');
+const clientIdInput = document.querySelector('input[name="opensky_client_id"]');
+const clientSecretInput = document.querySelector('input[name="opensky_client_secret"]');
+const activeSourceBadge = document.getElementById('activeSourceBadge');
+const SOURCE_LABELS = { local: 'Local antenna', opensky_own: 'OpenSky (own receiver)', opensky_all: 'OpenSky (area query)' };
+
+function updateSourceUI(){
+  const source = dataSourceSelect.value;
+  const tier = tierSelect.value;
+  const needsAuth = source !== 'local' && tier !== 'anonymous';
+  clientIdInput.disabled = !needsAuth;
+  clientSecretInput.disabled = !needsAuth;
+  clientIdInput.style.opacity = needsAuth ? '1' : '0.4';
+  clientSecretInput.style.opacity = needsAuth ? '1' : '0.4';
+  tierSelect.disabled = (source === 'local');
+  tierSelect.style.opacity = (source === 'local') ? '0.4' : '1';
+  activeSourceBadge.textContent = 'Currently active: ' + (SOURCE_LABELS[source] || source);
+}
+dataSourceSelect.addEventListener('change', () => { updateSourceUI(); updateEstimate(); });
+updateSourceUI();
 
 marker.on('drag', () => { circle.setLatLng(marker.getLatLng()); });
 marker.on('dragend', updateEstimate);

@@ -349,7 +349,7 @@
       <div class="top-status-stack">
         <div class="top-status">
           <span id="antennaDot" class="status-dot idle"></span>
-          <span id="antennaLabel" class="status-label">Connecting to antenna …</span>
+          <span id="antennaLabel" class="status-label">{{ t.connecting_to_antenna }}</span>
         </div>
         <div class="top-status">
           <span id="statusDot" class="status-dot idle"></span>
@@ -380,6 +380,7 @@
   </div>
 
 <script>
+const T = {{ t | tojson }};
 const ROTATE_MS = 10000;
 let currentList = [];
 let currentHex = null;
@@ -635,12 +636,13 @@ setInterval(() => {
 function render(data) {
   const antennaDot = document.getElementById('antennaDot');
   const antennaLabel = document.getElementById('antennaLabel');
+  const SOURCE_LABEL_KEYS = { local: 'source_local', opensky_own: 'source_opensky_own', opensky_all: 'source_opensky_all' };
   if (data.antenna_connected) {
     antennaDot.className = 'status-dot live';
-    antennaLabel.textContent = 'Antenna connected';
+    antennaLabel.textContent = T.antenna_connected_prefix + ': ' + (T[SOURCE_LABEL_KEYS[data.data_source]] || 'Antenna');
   } else {
     antennaDot.className = 'status-dot error';
-    antennaLabel.textContent = 'No antenna connection';
+    antennaLabel.textContent = T.no_antenna_connection;
   }
 
   const dot = document.getElementById('statusDot');
@@ -760,7 +762,7 @@ async function poll() {
     updateFireworks(!!data.show_fireworks);
   } catch (e) {
     document.getElementById('antennaDot').className = 'status-dot error';
-    document.getElementById('antennaLabel').textContent = 'No server connection';
+    document.getElementById('antennaLabel').textContent = T.no_server_connection;
     document.getElementById('statusDot').className = 'status-dot idle';
     document.getElementById('statusLabel').textContent = 'Connection lost';
   }

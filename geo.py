@@ -44,12 +44,18 @@ def credits_for_area(area_sq_deg):
 
 
 def estimate(center_lat, center_lon, radius_km):
+    import math
     lamin, lomin, lamax, lomax = radius_to_bbox(center_lat, center_lon, radius_km)
     area = bbox_area_sq_deg(lamin, lomin, lamax, lomax)
     credits = credits_for_area(area)
+    # Real-world circular area (what the radius actually selects) in km2 -
+    # far more intuitive to show a Norwegian user than "square degrees",
+    # which is only meaningful for the OpenSky credit-cost lookup itself.
+    area_km2 = round(math.pi * radius_km ** 2)
     return {
         "bbox": {"lamin": lamin, "lomin": lomin, "lamax": lamax, "lomax": lomax},
         "area_sq_deg": round(area, 2),
+        "area_km2": area_km2,
         "credits_per_call": credits,
         "over_recommended": radius_km > RECOMMENDED_MAX_RADIUS_KM,
     }

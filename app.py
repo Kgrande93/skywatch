@@ -9,12 +9,13 @@ from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import requests
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request, redirect, url_for
 
 import santa_route
 import settings as settings_module
 import ntfy_client
 import matrix
+import i18n
 from admin import admin_bp
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -24,8 +25,23 @@ log = logging.getLogger("skywatch")
 # Config (all via environment variables so nothing is hardcoded)
 # ---------------------------------------------------------------------------
 AIRCRAFT_JSON_URL = os.environ.get("AIRCRAFT_JSON_URL", "http://127.0.0.1/tar1090/data/aircraft.json")
-RECEIVER_LAT = float(os.environ.get("RECEIVER_LAT", "0"))  # set your antenna's actual latitude
-RECEIVER_LON = float(os.environ.get("RECEIVER_LON", "0"))  # set your antenna's actual longitude
+
+
+def get_receiver_location():
+    """Receiver position now lives in the admin panel (settings.json),
+    since it's also the center point for the OpenSky area query - not a
+    separate env var anymore. Falls back to RECEIVER_LAT/RECEIVER_LON env
+    vars once, on first run, so existing deployments keep working until
+    someone opens the admin panel and re-saves the area."""
+    s = settings_module.get_settings()
+    lat = s.get("area_center_lat")
+    lon = s.get("area_center_lon")
+    if lat is not None and lon is not None:
+        return lat, lon
+    return (
+        float(os.environ.get("RECEIVER_LAT", "0")),
+        float(os.environ.get("RECEIVER_LON", "0")),
+    )
 MAX_RANGE_KM = float(os.environ.get("MAX_RANGE_KM", "70"))
 REGION_TEXT = os.environ.get("REGION_TEXT", "Gardermoen area")
 ANTENNA_LOCATION_TEXT = os.environ.get("ANTENNA_LOCATION_TEXT", "somewhere in Norway")
@@ -408,7 +424,7 @@ def enrich(ac):
         "emergency": ac.get("emergency") if ac.get("emergency") not in (None, "none") else None,
         "lat": lat,
         "lon": lon,
-        "distance_km": round(haversine_km(RECEIVER_LAT, RECEIVER_LON, lat, lon), 1) if lat and lon else None,
+        "distance_km": round(haversine_km(*get_receiver_location(), lat, lon), 1) if lat and lon else None,
         "seen_epoch": now_epoch,
     }
 
@@ -431,9 +447,14 @@ def poll_loop():
 
 
 def poll_once():
-    r = requests.get(AIRCRAFT_JSON_URL, timeout=4)
-    r.raise_for_status()
-    data = r.json()
+    source = settings_module.get_settings().get("data_source", "local")
+    if source in ("opensky_own", "opensky_all"):
+        import opensky_source
+        data = opensky_source.fetch_aircraft_dict()
+    else:
+        r = requests.get(AIRCRAFT_JSON_URL, timeout=4)
+        r.raise_for_status()
+        data = r.json()
     aircraft_list = data.get("aircraft", [])
     now = time.time()
 
@@ -467,7 +488,8 @@ def poll_once():
             alt = ac.get("alt_geom")  # fall back for aircraft that only send geometric altitude
         if not isinstance(alt, (int, float)):  # still nothing usable - skip
             continue
-        dist = haversine_km(RECEIVER_LAT, RECEIVER_LON, lat, lon)
+        receiver_lat, receiver_lon = get_receiver_location()
+        dist = haversine_km(receiver_lat, receiver_lon, lat, lon)
 
         # Log every aircraft's farthest-seen distance regardless of the
         # display range cutoff below - this is how you discover the
@@ -648,12 +670,19 @@ def get_santa_status(now_utc_epoch):
 
 @app.route("/")
 def index():
-    return render_template("index.html", region_text=REGION_TEXT, antenna_location_text=ANTENNA_LOCATION_TEXT)
+    lang = i18n.get_lang()
+    return render_template("index.html", region_text=REGION_TEXT, antenna_location_text=ANTENNA_LOCATION_TEXT,
+                            t=i18n.get_strings(lang), lang=lang)
 
 
 @app.route("/kiosk")
 def kiosk():
-    return render_template("kiosk.html", region_text=REGION_TEXT, antenna_location_text=ANTENNA_LOCATION_TEXT)
+    lang = i18n.get_lang()
+    return render_template("kiosk.html", region_text=REGION_TEXT, antenna_location_text=ANTENNA_LOCATION_TEXT,
+                            t=i18n.get_strings(lang), lang=lang)
+
+
+
 
 
 @app.route("/api/status")
@@ -684,6 +713,7 @@ def api_status():
             }
 
         response["antenna_connected"] = antenna_connected
+        response["data_source"] = settings_module.get_settings().get("data_source", "local")
         response["show_snow"] = show_snow
         response["show_fireworks"] = show_fireworks
         response["server_time"] = datetime.now(timezone.utc).isoformat()
@@ -720,8 +750,9 @@ def api_range_log():
 
 
 if __name__ == "__main__":
-    if RECEIVER_LAT == 0 and RECEIVER_LON == 0:
-        log.warning("RECEIVER_LAT/RECEIVER_LON are not set (still 0,0) - "
+    _startup_lat, _startup_lon = get_receiver_location()
+    if _startup_lat == 0 and _startup_lon == 0:
+        log.warning("Receiver location is not set (still 0,0) - configure it in the admin panel, "
                     "distance and closest-aircraft selection will be wrong. "
                     "Set them to your antenna's actual coordinates.")
     t = threading.Thread(target=poll_loop, daemon=True)

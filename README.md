@@ -11,9 +11,9 @@ data — see "Limitations" below).
 
 **Prerequisite**: this needs an ADS-B receiver already feeding readsb/tar1090
 somewhere on your network. If you don't have that running yet, see
-[github.com/Kgrande93/FR24Feed](https://github.com/Kgrande93/FR24Feed) for a
-full setup guide (RTL2832U dongle + readsb + tar1090 + FlightRadar24 feeding
-on a Debian VM).
+[github.com/Kgrande93/ads-b](https://github.com/Kgrande93/ads-b) for a
+full setup guide (RTL2832U dongle + readsb + tar1090 + FlightRadar24 and
+OpenSky Network feeding on a Debian VM).
 
 ## Two view modes
 
@@ -37,7 +37,7 @@ automatically as part of the install. The webinterface is therefore at
 `http://<ip>/tar1090/data/aircraft.json`.
 
 **Finding `<ip>`**: it's whatever machine is running readsb/tar1090 - for
-example the VM from the [FR24Feed](https://github.com/Kgrande93/FR24Feed)
+example the VM from the [ads-b](https://github.com/Kgrande93/ads-b)
 setup. Find its IP from your router's client list, or by running
 `hostname -I` directly on that machine over SSH.
 
@@ -67,9 +67,12 @@ logs a clear warning on startup if they haven't been set.
 
 ## Other things you need to set
 
-- `RECEIVER_LAT` / `RECEIVER_LON` — your antenna's position (used for
-  distance, and for picking the "closest aircraft" when several are in
-  range). The code has no real default here — set your actual coordinates.
+> Your antenna's position (`RECEIVER_LAT`/`RECEIVER_LON`) is **no longer set
+> here** - it's configured through the [admin panel](#admin-panel) instead,
+> since it's also the center point for the OpenSky area query. The env vars
+> still work as a first-run fallback for existing deployments, but the admin
+> panel is now the source of truth once you've saved settings there once.
+
 - `MAX_RANGE_KM` — how far away an aircraft still counts as "in range"
   (default 70 km). Note this can genuinely be 200-300+ km for a decent
   antenna with clear line of sight - check the range-discovery log below
@@ -107,7 +110,7 @@ sudo -u skywatch python3 -m venv venv
 sudo -u skywatch venv/bin/pip install -r requirements.txt
 
 cp skywatch.service.example skywatch.service
-nano skywatch.service   # fill in your own values, see above
+nano skywatch.service   # fill in your own values, see above, plus ADMIN_PASSWORD_HASH (see "Admin panel" below)
 
 sudo cp skywatch.service /etc/systemd/system/
 sudo systemctl daemon-reload
@@ -123,6 +126,50 @@ Logos are fetched from AirHex (`content.airhex.com`) on their free/demo
 tier without an API key — works, but may carry a small watermark. If you
 have a free AirHex API key, set `AIRHEX_APIKEY` as an environment variable
 and the URL automatically switches to the signed, watermark-free variant.
+
+## Admin panel
+
+Available at `http://<host-ip>:5000/admin` - configure things that used to
+require editing `skywatch.service` and restarting the service by hand:
+
+- **Data source** - local antenna (readsb/tar1090), or OpenSky Network
+  (your own receiver for free, or an area query that uses OpenSky API
+  credits)
+- **OpenSky credentials** - client ID/secret (only needed when an OpenSky
+  source is selected and you're not using the anonymous tier)
+- **Area** - an interactive map to set your antenna's position and a
+  coverage radius, with a live estimate of OpenSky credit cost and the
+  resulting update interval as you drag the radius slider
+- **Notifications** - an [ntfy](https://ntfy.sh) topic for two independent
+  things: (1) messages sent to that topic show up as a banner on the
+  physical [Skywatch Lite](https://github.com/Kgrande93/skywatch-lite)
+  display for 10 minutes, and (2) an automatic alert to the same topic
+  whenever an aircraft squawks an emergency code (7500/7600/7700)
+- **Display** - screen brightness (for Skywatch Lite) and the language used
+  by both this admin panel and the on-screen displays (Norwegian or
+  English - one shared setting, not per-visitor, since a wall-mounted
+  display has no one to individually prefer a language)
+
+**Setup**: the admin panel is disabled until you set a password. Generate a
+hash (never store the plain password anywhere):
+
+```bash
+cd /opt/skywatch
+venv/bin/python3 -c "from werkzeug.security import generate_password_hash; print(generate_password_hash('your-password-here'))"
+```
+
+Add the output to `skywatch.service`:
+
+```
+Environment=ADMIN_PASSWORD_HASH=scrypt:...
+```
+
+Then reload and restart:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart skywatch
+```
 
 ## Finding your antenna's real range
 

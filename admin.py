@@ -18,6 +18,7 @@ from flask import Blueprint, jsonify, redirect, render_template, request, sessio
 from werkzeug.security import check_password_hash
 
 import settings as settings_module
+import i18n
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -55,6 +56,8 @@ def login():
     if not ADMIN_PASSWORD_HASH:
         return "ADMIN_PASSWORD_HASH is not set - admin panel is disabled until it is configured.", 503
 
+    lang = i18n.get_lang()
+    t = i18n.get_strings(lang)
     error = None
     if request.method == "POST":
         ip = request.remote_addr
@@ -67,8 +70,8 @@ def login():
                 session.permanent = True
                 return redirect(url_for("admin.dashboard"))
             _record_failed_attempt(ip)
-            error = "Wrong password."
-    return render_template("admin_login.html", error=error)
+            error = t["admin_login_error"]
+    return render_template("admin_login.html", error=error, t=t, lang=lang)
 
 
 @admin_bp.route("/logout")
@@ -85,7 +88,9 @@ def dashboard():
         s["area_center_lat"] = float(os.environ.get("RECEIVER_LAT", "0"))
     if s.get("area_center_lon") is None:
         s["area_center_lon"] = float(os.environ.get("RECEIVER_LON", "0"))
-    return render_template("admin_dashboard.html", settings=s)
+    lang = i18n.get_lang()
+    return render_template("admin_dashboard.html", settings=s, t=i18n.get_strings(lang), lang=lang,
+                            supported_langs=i18n.SUPPORTED_LANGS)
 
 
 @admin_bp.route("/settings", methods=["POST"])
@@ -95,10 +100,12 @@ def save_settings():
     changes = {
         "data_source": form.get("data_source", "local"),
         "opensky_client_id": form.get("opensky_client_id", "").strip(),
+        "opensky_tier": form.get("opensky_tier", "registered"),
         "ntfy_topic": form.get("ntfy_topic", "").strip(),
         "ntfy_messages_enabled": form.get("ntfy_messages_enabled") == "on",
         "ntfy_emergency_squawk_enabled": form.get("ntfy_emergency_squawk_enabled") == "on",
         "brightness": int(form.get("brightness", 80)),
+        "language": form.get("language", "no"),
     }
     # Only overwrite the secret if a new one was actually typed - the
     # dashboard shows a masked placeholder, not the real value, so an
