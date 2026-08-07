@@ -12,6 +12,10 @@ import requests
 from flask import Flask, jsonify, render_template
 
 import santa_route
+import settings as settings_module
+import ntfy_client
+import matrix
+from admin import admin_bp
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("skywatch")
@@ -44,6 +48,12 @@ NON_FLIGHT_CALLSIGNS = {"00000000"}  # ground vehicles etc. often broadcast this
 NON_AIRCRAFT_CATEGORIES = {"C1", "C2", "C3", "C4", "C5"}
 
 app = Flask(__name__)
+app.secret_key = settings_module.get_or_create_secret_key()
+app.register_blueprint(admin_bp)
+
+_settings = settings_module.get_settings()
+if _settings.get("ntfy_topic"):
+    ntfy_client.start_subscriber(_settings["ntfy_topic"])
 
 # ---------------------------------------------------------------------------
 # State
@@ -60,6 +70,33 @@ _callsign_cache = {}  # callsign -> (expiry_ts, adsbdb_response_or_None)
 _aircraft_cache = {}  # hex -> (expiry_ts, adsbdb_response_or_None)
 _max_distance_by_hex = {}  # hex -> farthest distance_km ever recorded for that aircraft
 _ground_since = {}  # hex -> epoch when this aircraft was first seen with ground status
+_emergency_alerted = set()  # hex codes we've already sent an ntfy alert for
+
+EMERGENCY_SQUAWKS = {"7500": "HIJACK", "7600": "RADIO FAILURE", "7700": "GENERAL EMERGENCY"}
+
+
+def check_emergency_squawk(entry):
+    """Fires an ntfy alert the first time a given aircraft (by hex) is seen
+    squawking an emergency code - not on every poll while it stays active,
+    and resets once the squawk clears so a later, separate emergency from
+    the same aircraft still alerts."""
+    hexid = entry.get("hex")
+    squawk = entry.get("squawk")
+    settings = settings_module.get_settings()
+
+    if squawk in EMERGENCY_SQUAWKS:
+        if hexid and hexid not in _emergency_alerted:
+            _emergency_alerted.add(hexid)
+            if settings.get("ntfy_emergency_squawk_enabled") and settings.get("ntfy_topic"):
+                label = EMERGENCY_SQUAWKS[squawk]
+                callsign = entry.get("callsign") or hexid
+                ntfy_client.send_message(
+                    settings["ntfy_topic"],
+                    title=f"Emergency squawk {squawk}",
+                    message=f"{callsign} is squawking {squawk} ({label})",
+                )
+    elif hexid in _emergency_alerted:
+        _emergency_alerted.discard(hexid)
 AIRCRAFT_CACHE_TTL = int(os.environ.get("AIRCRAFT_CACHE_TTL_SECONDS", str(30 * 24 * 3600)))  # registration barely changes
 
 
@@ -486,6 +523,9 @@ def poll_once():
         if closest_enriched:
             _state["last"] = closest_enriched
 
+    for entry in enriched_list:
+        check_emergency_squawk(entry)
+
     save_state_file()
 
 
@@ -648,6 +688,14 @@ def api_status():
         response["show_fireworks"] = show_fireworks
         response["server_time"] = datetime.now(timezone.utc).isoformat()
         return jsonify(response)
+
+
+@app.route("/api/matrix")
+def api_matrix():
+    with _lock:
+        last_poll = _state["last_poll_success_epoch"]
+        antenna_connected = last_poll is not None and (time.time() - last_poll) < ANTENNA_TIMEOUT_SECONDS
+        return jsonify(matrix.build_matrix_response(_state, antenna_connected))
 
 
 @app.route("/api/range-log")
