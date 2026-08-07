@@ -169,10 +169,24 @@ const clientSecretInput = document.querySelector('input[name="opensky_client_sec
 const activeSourceBadge = document.getElementById('activeSourceBadge');
 const SOURCE_LABELS = { local: 'Local antenna', opensky_own: 'OpenSky (own receiver)', opensky_all: 'OpenSky (area query)' };
 
+const anonymousOption = tierSelect.querySelector('option[value="anonymous"]');
+
 function updateSourceUI(){
   const source = dataSourceSelect.value;
+
+  // OpenSky's /states/own has no anonymous mode - it always requires
+  // authentication, regardless of tier. Only /states/all (area query) can
+  // run anonymously. Prevent the invalid combination instead of just
+  // failing silently at request time.
+  if (source === 'opensky_own') {
+    anonymousOption.disabled = true;
+    if (tierSelect.value === 'anonymous') tierSelect.value = 'registered';
+  } else {
+    anonymousOption.disabled = false;
+  }
+
   const tier = tierSelect.value;
-  const needsAuth = source !== 'local' && tier !== 'anonymous';
+  const needsAuth = source === 'opensky_own' || (source === 'opensky_all' && tier !== 'anonymous');
   clientIdInput.disabled = !needsAuth;
   clientSecretInput.disabled = !needsAuth;
   clientIdInput.style.opacity = needsAuth ? '1' : '0.4';
@@ -182,6 +196,7 @@ function updateSourceUI(){
   activeSourceBadge.textContent = 'Currently active: ' + (SOURCE_LABELS[source] || source);
 }
 dataSourceSelect.addEventListener('change', () => { updateSourceUI(); updateEstimate(); });
+tierSelect.addEventListener('change', updateSourceUI);
 updateSourceUI();
 
 marker.on('drag', () => { circle.setLatLng(marker.getLatLng()); });
