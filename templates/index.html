@@ -338,6 +338,13 @@
     position: relative;
     z-index: 1;
   }
+  .ntfy-banner {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+    display: none; padding: 14px 24px; background: rgba(255,180,84,0.14);
+    border-top: 2px solid #ffb454; color: #ffb454;
+    font-size: 1.2rem; font-weight: 600; text-align: center;
+  }
+  .ntfy-banner.show { display: block; }
 </style>
 </head>
 
@@ -378,6 +385,7 @@
   <div id="rotateProgressTrack" class="rotate-progress-track">
     <div id="rotateProgressBar" class="rotate-progress-bar"></div>
   </div>
+  <div id="ntfyBanner" class="ntfy-banner"></div>
 
 <script>
 const T = {{ t | tojson }};
@@ -637,6 +645,14 @@ function render(data) {
   const antennaDot = document.getElementById('antennaDot');
   const antennaLabel = document.getElementById('antennaLabel');
   const SOURCE_LABEL_KEYS = { local: 'source_local', opensky_own: 'source_opensky_own', opensky_all: 'source_opensky_all' };
+
+  const banner = document.getElementById('ntfyBanner');
+  if (data.banner_text) {
+    banner.textContent = data.banner_text;
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
   if (data.antenna_connected) {
     antennaDot.className = 'status-dot live';
     antennaLabel.textContent = T.antenna_connected_prefix + ': ' + (T[SOURCE_LABEL_KEYS[data.data_source]] || 'Antenna');

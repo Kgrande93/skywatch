@@ -767,8 +767,10 @@ def api_status():
                 "last": _state["last"],
             }
 
+        banner_text, banner_expires_at = ntfy_client.current_banner()
         response["antenna_connected"] = antenna_connected
         response["data_source"] = settings_module.get_settings().get("data_source", "local")
+        response["banner_text"] = banner_text
         response["show_snow"] = show_snow
         response["show_fireworks"] = show_fireworks
         response["server_time"] = datetime.now(timezone.utc).isoformat()

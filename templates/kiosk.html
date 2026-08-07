@@ -128,6 +128,13 @@
   }
   @keyframes firework-spark { 0% { opacity: 0; height: 2px; } 15% { opacity: 1; } 100% { opacity: 0; height: 60px; } }
   .page { position: relative; z-index: 1; }
+  .ntfy-banner {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+    display: none; padding: 14px 24px; background: rgba(255,180,84,0.14);
+    border-top: 2px solid #ffb454; color: #ffb454;
+    font-size: 1.4rem; font-weight: 600; text-align: center;
+  }
+  .ntfy-banner.show { display: block; }
 </style>
 </head>
 <body>
@@ -147,6 +154,7 @@
       <div class="signature">Made by love in Nannestad, Norway &#127475;&#127476;</div>
     </div>
   </div>
+  <div id="ntfyBanner" class="ntfy-banner"></div>
 
 <script>
 const ROTATE_MS = 10000;
@@ -283,6 +291,14 @@ function render(data) {
   const label = document.getElementById('statusLabel');
   const content = document.getElementById('content');
   const sourceLabel = SOURCE_LABELS[data.data_source] || 'Antenna';
+
+  const banner = document.getElementById('ntfyBanner');
+  if (data.banner_text) {
+    banner.textContent = data.banner_text;
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
 
   if (!data.antenna_connected) {
     currentList = [];
