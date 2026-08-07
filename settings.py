@@ -37,6 +37,7 @@ DEFAULTS = {
     "brightness": 80,
     "language": "no",  # "no" | "en" - shared by both the screen displays and this admin panel
     "admin_password_hash": None,  # set via the panel's change-password form; falls back to ADMIN_PASSWORD_HASH env var when None
+    "admin_intro_seen": False,
 }
 
 

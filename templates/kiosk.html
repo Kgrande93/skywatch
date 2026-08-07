@@ -157,6 +157,7 @@
   <div id="ntfyBanner" class="ntfy-banner"></div>
 
 <script>
+const T = {{ t | tojson }};
 const ROTATE_MS = 10000;
 let currentList = [];
 let currentHex = null;
@@ -304,25 +305,23 @@ function render(data) {
     currentList = [];
     currentHex = null;
     dot.className = 'status-dot error';
-    label.textContent = `No connection: ${sourceLabel}`;
-    content.innerHTML = '<div class="big-state error"><div class="big-state-title">No antenna connection</div><div class="big-state-sub">Waiting to reconnect to the receiver …</div></div>';
+    label.textContent = `${T.no_antenna_connection}: ${sourceLabel}`;
+    content.innerHTML = `<div class="big-state error"><div class="big-state-title">${T.no_antenna_connection}</div><div class="big-state-sub">${T.waiting_to_reconnect}</div></div>`;
     return;
   }
 
   if (data.active && data.aircraft_list && data.aircraft_list.length > 0) {
     dot.className = 'status-dot live';
-    label.textContent = `Tracking ${data.aircraft_list.length} aircraft · ${sourceLabel}`;
+    label.textContent = `${T.tracking_aircraft.replace('{count}', data.aircraft_list.length)} · ${sourceLabel}`;
     updateList(data.aircraft_list);
   } else {
     currentList = [];
     currentHex = null;
     dot.className = 'status-dot waiting';
     const hasSeenBefore = !!data.last;
-    label.textContent = hasSeenBefore ? 'No aircraft nearby' : 'No data yet';
-    const title = hasSeenBefore ? 'No aircraft nearby' : 'Waiting for the first aircraft';
-    const sub = hasSeenBefore
-      ? 'Antenna connected — watching for the next one …'
-      : 'Antenna connected, listening for ADS-B signals …';
+    label.textContent = hasSeenBefore ? T.no_aircraft_nearby : T.no_data_yet;
+    const title = hasSeenBefore ? T.no_aircraft_nearby : T.waiting_for_first_aircraft;
+    const sub = hasSeenBefore ? T.watching_for_next : T.listening_for_signals;
     content.innerHTML = `<div class="big-state"><div class="big-state-title">${title}</div><div class="big-state-sub">${sub}</div></div>`;
   }
 }

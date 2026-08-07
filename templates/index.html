@@ -363,7 +363,6 @@
           <span id="statusLabel" class="status-label">Connecting …</span>
         </div>
       </div>
-      <div class="corner-label top-right">This is the aircraft you can see over the {{ region_text }} area right now.</div>
     </div>
 
     <div class="main-area">
@@ -667,7 +666,7 @@ function render(data) {
 
   if (data.active && data.aircraft_list && data.aircraft_list.length > 0) {
     dot.className = 'status-dot live';
-    label.textContent = `Tracking ${data.aircraft_list.length} aircraft`;
+    label.textContent = T.tracking_aircraft.replace('{count}', data.aircraft_list.length);
     updateList(data.aircraft_list);
 
   } else if (data.last) {
@@ -677,15 +676,15 @@ function render(data) {
     document.getElementById('rotateProgressTrack').classList.remove('visible');
     const ac = data.last;
     dot.className = 'status-dot idle';
-    label.textContent = 'No aircraft nearby';
+    label.textContent = T.no_aircraft_nearby;
 
     const dest = airportLabel(ac.destination);
     const seenTime = fmtTime(ac.seen_epoch);
     let etaHtml = '';
     if (ac.eta && !ac.eta.landed_estimate) {
-      etaHtml = ` &mdash; estimated landing around <strong>${fmtTime(ac.eta.epoch)}</strong>`;
+      etaHtml = ` &mdash; ${T.estimated_landing_around} <strong>${fmtTime(ac.eta.epoch)}</strong>`;
     } else if (ac.eta && ac.eta.landed_estimate) {
-      etaHtml = ` &mdash; likely landed around <strong>${seenTime}</strong>`;
+      etaHtml = ` &mdash; ${T.likely_landed_around} <strong>${seenTime}</strong>`;
     }
 
     let html = '<div class="header">';
@@ -700,8 +699,8 @@ function render(data) {
     html += '</div>';
     html += '</div>';
     html += '<div class="divider"></div>';
-    html += `<div class="idle-text">Last aircraft seen in the sky`;
-    if (dest) html += ` heading to <strong>${dest}</strong>`;
+    html += `<div class="idle-text">${T.last_aircraft_seen}`;
+    if (dest) html += ` ${T.heading_to} <strong>${dest}</strong>`;
     html += `, at ${seenTime}${etaHtml}.</div>`;
     content.innerHTML = html;
 
@@ -710,8 +709,8 @@ function render(data) {
     currentHex = null;
     document.getElementById('rotateProgressTrack').classList.remove('visible');
     dot.className = 'status-dot idle';
-    label.textContent = 'No data yet';
-    content.innerHTML = '<div class="empty">Waiting for the first aircraft …</div>';
+    label.textContent = T.no_data_yet;
+    content.innerHTML = `<div class="empty">${T.waiting_for_first_aircraft}</div>`;
   }
 }
 

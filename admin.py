@@ -99,7 +99,15 @@ def dashboard():
         s["area_center_lon"] = float(os.environ.get("RECEIVER_LON", "0"))
     lang = i18n.get_lang()
     return render_template("admin_dashboard.html", settings=s, t=i18n.get_strings(lang), lang=lang,
-                            supported_langs=i18n.SUPPORTED_LANGS)
+                            supported_langs=i18n.SUPPORTED_LANGS,
+                            show_intro=not s.get("admin_intro_seen"))
+
+
+@admin_bp.route("/dismiss-intro", methods=["POST"])
+@login_required
+def dismiss_intro():
+    settings_module.update_settings({"admin_intro_seen": True})
+    return ("", 204)
 
 
 @admin_bp.route("/change-password", methods=["POST"])
