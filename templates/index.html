@@ -253,11 +253,17 @@
   }
   .nav-arrow:hover { background: rgba(255,255,255,0.16); }
   .nav-arrow.visible { display: block; }
+  .nav-arrow { flex-shrink: 0; }
   .dots {
     display: flex;
     justify-content: center;
     gap: 10px;
+    max-width: 55vw;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
+  .dots::-webkit-scrollbar { display: none; }
+  .dot { flex-shrink: 0; }
   .dot { width: clamp(6px, 1vw, 16px); height: clamp(6px, 1vw, 16px); border-radius: 50%; background: rgba(255,255,255,0.2); cursor: pointer; }
   .dot.on { background: var(--accent); }
   .emergency-banner {
