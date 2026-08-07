@@ -16,6 +16,7 @@ import settings as settings_module
 import ntfy_client
 import matrix
 import i18n
+import opensky_client
 from admin import admin_bp
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -435,15 +436,50 @@ def enrich(ac):
     return entry
 
 
+def get_poll_interval_seconds():
+    """For a local antenna, the fixed env-configured interval (usually 1s)
+    is fine - no quota to worry about. For OpenSky, the interval must be
+    derived from the account tier and selected area so the daily credit
+    budget actually lasts the full day, instead of a fixed interval that
+    has no relationship to the quota (which is what caused the 400-credit
+    anonymous tier to exhaust itself in minutes)."""
+    s = settings_module.get_settings()
+    source = s.get("data_source", "local")
+    if source == "local":
+        return POLL_INTERVAL_SECONDS
+    if source == "opensky_own":
+        return 10  # free/unlimited endpoint - no quota math needed, just a sane refresh rate
+    # opensky_all - actually costs credits, compute from area + tier
+    import geo
+    import opensky_client as osc
+    lat, lon = s.get("area_center_lat"), s.get("area_center_lon")
+    radius_km = s.get("area_radius_km") or 25
+    if lat is None or lon is None:
+        return POLL_INTERVAL_SECONDS  # area not configured yet - fall back rather than guess
+    result = geo.estimate(lat, lon, radius_km)
+    return osc.recommended_poll_interval_seconds(s.get("opensky_tier", "registered"),
+                                                  credits_per_call=result["credits_per_call"])
+
+
 def poll_loop():
     load_state_file()
     load_distance_log()
     while True:
+        sleep_seconds = get_poll_interval_seconds()
         try:
             poll_once()
+        except opensky_client.OpenSkyRateLimitError as e:
+            # Hit the quota despite the interval math (e.g. area/tier changed
+            # mid-day after credits were already spent this cycle) - back off
+            # for what OpenSky actually tells us to wait, capped at 1 hour so
+            # a huge retry_after can't accidentally freeze the app for a day.
+            wait = min(e.retry_after or 3600, 3600)
+            log.warning("OpenSky rate limit hit, backing off for %ds", wait)
+            time.sleep(wait)
+            continue
         except Exception as e:
             log.exception("Poll failed: %s", e)
-        time.sleep(POLL_INTERVAL_SECONDS)
+        time.sleep(sleep_seconds)
 
 
 def poll_once():
