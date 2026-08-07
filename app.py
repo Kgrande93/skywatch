@@ -52,7 +52,15 @@ MAX_RANGE_KM_ENV_DEFAULT = float(os.environ.get("MAX_RANGE_KM", "70"))
 
 
 def get_max_range_km():
-    """Same settings-first, env-fallback pattern as get_receiver_location()."""
+    """Only meaningful for local antenna mode. For OpenSky, range is
+    already defined by the query itself - the area radius (opensky_all)
+    or your own receiver's physical coverage (opensky_own) - so applying
+    an extra distance cutoff on top would just be a second, confusing
+    definition of "range" fighting the first one. Returns None for
+    OpenSky sources, meaning "no additional cutoff"."""
+    source = settings_module.get_settings().get("data_source", "local")
+    if source != "local":
+        return None
     val = settings_module.get_settings().get("max_range_km")
     return float(val) if val is not None else MAX_RANGE_KM_ENV_DEFAULT
 # ANTENNA_LOCATION_TEXT retired - no longer meaningful now that the data
@@ -578,7 +586,8 @@ def poll_once():
             "altitude_ft": alt,
         })
 
-        if dist <= get_max_range_km():
+        max_range = get_max_range_km()
+        if max_range is None or dist <= max_range:
             candidates.append((dist, ac))
 
     # Drop tracking for any hex no longer showing ground status - it

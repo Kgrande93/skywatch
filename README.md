@@ -121,13 +121,17 @@ require editing `skywatch.service` and restarting the service by hand:
   credits)
 - **OpenSky credentials** - client ID/secret (only needed when an OpenSky
   source is selected and you're not using the anonymous tier)
-- **Max range (km)** - how far away an aircraft still counts as "in range".
-  Applies regardless of data source. Safe to set high (200-300+ km) for a
-  local antenna since it costs nothing - check the range-discovery log
-  below before assuming the 70 km default is right for your antenna
-- **Receiver position** - click or drag the marker on the map to set where
-  your antenna actually is. Always active, regardless of data source - it's
-  used for distance calculations either way, not just the OpenSky query
+- **Receiver position** - click/drag the marker, or type exact coordinates
+  into the latitude/longitude fields (both stay in sync). Always active
+  regardless of data source - used for the "distance from me" figure shown
+  on every aircraft either way
+- **Max range (km)** - local antenna only (greyed out for OpenSky sources,
+  since their range is already defined by the radius or the receiver's own
+  coverage - an extra cutoff on top would just conflict with that). Safe
+  to set high (200-300+ km) since it costs nothing locally - check the
+  range-discovery log below before assuming the 70 km default is right
+- **Local aircraft.json URL** - local antenna only, where readsb/tar1090's
+  JSON feed lives (default `http://127.0.0.1/tar1090/data/aircraft.json`)
 - **Radius** - only relevant when the data source is "OpenSky - area
   query" (greyed out otherwise): the coverage radius for that query, with
   a live estimate of OpenSky credit cost and the resulting update interval
@@ -137,6 +141,9 @@ require editing `skywatch.service` and restarting the service by hand:
   physical [Skywatch Lite](https://github.com/Kgrande93/skywatch-lite)
   display for 10 minutes, and (2) an automatic alert to the same topic
   whenever an aircraft squawks an emergency code (7500/7600/7700)
+- **Timezone** - IANA name (e.g. `Europe/Oslo`), used for seasonal
+  features (snow, Santa, fireworks) so they trigger at the right local
+  moment
 - **Display** - screen brightness (for Skywatch Lite) and the language used
   by both this admin panel and the on-screen displays (Norwegian or
   English - one shared setting, not per-visitor, since a wall-mounted

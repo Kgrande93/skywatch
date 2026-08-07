@@ -98,13 +98,15 @@ document.getElementById('introDismiss').addEventListener('click', () => {
         <option value="feeder" {% if settings.opensky_tier == 'feeder' %}selected{% endif %}>{{ t.admin_tier_feeder }}</option>
       </select>
 
-      <label>{{ t.admin_max_range }}</label>
-      <input type="number" name="max_range_km" min="1" step="1" value="{{ settings.max_range_km or 70 }}">
-      <div class="field-note">{{ t.admin_max_range_note }}</div>
+      <div id="localOnlySection">
+        <label>{{ t.admin_max_range }}</label>
+        <input type="number" name="max_range_km" min="1" step="1" value="{{ settings.max_range_km or 70 }}" id="maxRangeInput">
+        <div class="field-note">{{ t.admin_max_range_note }}</div>
 
-      <label>{{ t.admin_local_url }}</label>
-      <input type="text" name="aircraft_json_url" value="{{ settings.aircraft_json_url or '' }}" placeholder="http://127.0.0.1/tar1090/data/aircraft.json">
-      <div class="field-note">{{ t.admin_local_url_note }}</div>
+        <label>{{ t.admin_local_url }}</label>
+        <input type="text" name="aircraft_json_url" value="{{ settings.aircraft_json_url or '' }}" placeholder="http://127.0.0.1/tar1090/data/aircraft.json" id="localUrlInput">
+        <div class="field-note">{{ t.admin_local_url_note }}</div>
+      </div>
     </fieldset>
 
     <h2>{{ t.admin_area }}</h2>
@@ -285,6 +287,15 @@ function updateSourceUI(){
   const radiusSection = document.getElementById('radiusSection');
   radiusSection.style.opacity = areaMatters ? '1' : '0.4';
   radiusSection.style.pointerEvents = areaMatters ? 'auto' : 'none';
+
+  // Max range / local URL only make sense for local antenna mode - for
+  // OpenSky, range is already defined by the radius (area query) or the
+  // receiver's own physical coverage (own receiver), so this would just
+  // be a second, conflicting definition of "range".
+  const isLocal = (source === 'local');
+  const localSection = document.getElementById('localOnlySection');
+  localSection.style.opacity = isLocal ? '1' : '0.4';
+  localSection.style.pointerEvents = isLocal ? 'auto' : 'none';
 
   activeSourceBadge.textContent = {{ t.admin_currently_active | tojson }} + ': ' + (SOURCE_LABELS[source] || source);
 }
