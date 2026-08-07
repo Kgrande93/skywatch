@@ -68,7 +68,10 @@
     </fieldset>
 
     <h2>{{ t.admin_area }}</h2>
-    <fieldset>
+    <div id="areaIrrelevantNote" style="display:none; font-size:12.5px; color:#8a94a0; margin:6px 0 -4px;">
+      Only used when the data source is "OpenSky — area query". It has no effect for local antenna or your own OpenSky receiver.
+    </div>
+    <fieldset id="areaFieldset">
       <div id="map"></div>
       <div class="slider-row">
         <div class="slider-label"><span>Radius</span><b id="radiusLabel">25 km</b></div>
@@ -87,6 +90,8 @@
 
     <h2>{{ t.admin_notifications }}</h2>
     <fieldset>
+      <label>Ntfy server (leave blank for the public ntfy.sh)</label>
+      <input type="text" name="ntfy_server" value="{{ settings.ntfy_server }}" placeholder="https://ntfy.sh">
       <label>Ntfy topic</label>
       <input type="text" name="ntfy_topic" value="{{ settings.ntfy_topic }}">
       <div class="checkbox-row">
@@ -112,6 +117,20 @@
     </fieldset>
 
     <button type="submit">{{ t.admin_save }}</button>
+  </form>
+
+  <h2>Password</h2>
+  <form method="post" action="{{ url_for('admin.change_password') }}">
+    <fieldset>
+      {% if password_error %}<div style="color:#ff4d4d; font-size:12.5px; margin-bottom:10px;">{{ password_error }}</div>{% endif %}
+      <label>Current password</label>
+      <input type="password" name="current_password" required>
+      <label>New password (min. 8 characters)</label>
+      <input type="password" name="new_password" required minlength="8">
+      <label>Confirm new password</label>
+      <input type="password" name="confirm_password" required minlength="8">
+    </fieldset>
+    <button type="submit">Change password</button>
   </form>
 </div>
 
@@ -193,6 +212,15 @@ function updateSourceUI(){
   clientSecretInput.style.opacity = needsAuth ? '1' : '0.4';
   tierSelect.disabled = (source === 'local');
   tierSelect.style.opacity = (source === 'local') ? '0.4' : '1';
+
+  // The area/radius map only matters for the OpenSky area query - it has
+  // no effect at all for local antenna or "own receiver" (which uses your
+  // receiver's own coverage, not a configurable radius).
+  const areaMatters = (source === 'opensky_all');
+  document.getElementById('areaFieldset').style.opacity = areaMatters ? '1' : '0.4';
+  document.getElementById('areaFieldset').style.pointerEvents = areaMatters ? 'auto' : 'none';
+  document.getElementById('areaIrrelevantNote').style.display = areaMatters ? 'none' : 'block';
+
   activeSourceBadge.textContent = 'Currently active: ' + (SOURCE_LABELS[source] || source);
 }
 dataSourceSelect.addEventListener('change', () => { updateSourceUI(); updateEstimate(); });

@@ -31,10 +31,12 @@ DEFAULTS = {
     "area_center_lon": None,   # defaults to RECEIVER_LON env var on first run
     "area_radius_km": 25,      # recommended default
     "ntfy_topic": "",
+    "ntfy_server": "",  # e.g. https://ntfy.grandedata.no - falls back to https://ntfy.sh when empty
     "ntfy_messages_enabled": False,
     "ntfy_emergency_squawk_enabled": False,
     "brightness": 80,
     "language": "no",  # "no" | "en" - shared by both the screen displays and this admin panel
+    "admin_password_hash": None,  # set via the panel's change-password form; falls back to ADMIN_PASSWORD_HASH env var when None
 }
 
 

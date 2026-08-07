@@ -45,7 +45,9 @@ def get_receiver_location():
     )
 MAX_RANGE_KM = float(os.environ.get("MAX_RANGE_KM", "70"))
 REGION_TEXT = os.environ.get("REGION_TEXT", "Gardermoen area")
-ANTENNA_LOCATION_TEXT = os.environ.get("ANTENNA_LOCATION_TEXT", "somewhere in Norway")
+# ANTENNA_LOCATION_TEXT retired - no longer meaningful now that the data
+# source (and therefore what "location" even means) is chosen per-instance
+# in the admin panel rather than being a fixed physical antenna.
 TIMEZONE = os.environ.get("TIMEZONE", "Europe/Oslo")
 TZ = ZoneInfo(TIMEZONE)
 SANTA_CRUISE_ALTITUDE_FT = 241200  # deliberately absurd - well past the Karman line
@@ -724,14 +726,14 @@ def get_santa_status(now_utc_epoch):
 @app.route("/")
 def index():
     lang = i18n.get_lang()
-    return render_template("index.html", region_text=REGION_TEXT, antenna_location_text=ANTENNA_LOCATION_TEXT,
+    return render_template("index.html", region_text=REGION_TEXT,
                             t=i18n.get_strings(lang), lang=lang)
 
 
 @app.route("/kiosk")
 def kiosk():
     lang = i18n.get_lang()
-    return render_template("kiosk.html", region_text=REGION_TEXT, antenna_location_text=ANTENNA_LOCATION_TEXT,
+    return render_template("kiosk.html", region_text=REGION_TEXT,
                             t=i18n.get_strings(lang), lang=lang)
 
 

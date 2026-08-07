@@ -15,14 +15,22 @@ import time
 from functools import wraps
 
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 import settings as settings_module
 import i18n
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
-ADMIN_PASSWORD_HASH = os.environ.get("ADMIN_PASSWORD_HASH", "")
+ADMIN_PASSWORD_HASH_ENV = os.environ.get("ADMIN_PASSWORD_HASH", "")
+
+
+def current_password_hash():
+    """settings.json overrides the env var once a password change has been
+    saved through the panel - env var remains the bootstrap/fallback value
+    for first run and for recovering if settings.json is ever wiped."""
+    stored = settings_module.get_settings().get("admin_password_hash")
+    return stored or ADMIN_PASSWORD_HASH_ENV
 
 # Simple in-memory rate limit on login attempts, keyed by IP. Not shared
 # across multiple app instances/workers, but stops naive brute-forcing.
@@ -53,8 +61,9 @@ def login_required(view):
 
 @admin_bp.route("/login", methods=["GET", "POST"])
 def login():
-    if not ADMIN_PASSWORD_HASH:
-        return "ADMIN_PASSWORD_HASH is not set - admin panel is disabled until it is configured.", 503
+    password_hash = current_password_hash()
+    if not password_hash:
+        return "No admin password is configured yet - set ADMIN_PASSWORD_HASH to enable the admin panel.", 503
 
     lang = i18n.get_lang()
     t = i18n.get_strings(lang)
@@ -65,7 +74,7 @@ def login():
             error = "Too many attempts - wait a few minutes and try again."
         else:
             submitted = request.form.get("password", "")
-            if check_password_hash(ADMIN_PASSWORD_HASH, submitted):
+            if check_password_hash(password_hash, submitted):
                 session["admin_authenticated"] = True
                 session.permanent = True
                 return redirect(url_for("admin.dashboard"))
@@ -93,6 +102,33 @@ def dashboard():
                             supported_langs=i18n.SUPPORTED_LANGS)
 
 
+@admin_bp.route("/change-password", methods=["POST"])
+@login_required
+def change_password():
+    current = request.form.get("current_password", "")
+    new_pw = request.form.get("new_password", "")
+    confirm = request.form.get("confirm_password", "")
+
+    if not check_password_hash(current_password_hash(), current):
+        return render_template("admin_dashboard.html", settings=settings_module.get_settings(),
+                                t=i18n.get_strings(i18n.get_lang()), lang=i18n.get_lang(),
+                                supported_langs=i18n.SUPPORTED_LANGS,
+                                password_error="Current password is incorrect.")
+    if len(new_pw) < 8:
+        return render_template("admin_dashboard.html", settings=settings_module.get_settings(),
+                                t=i18n.get_strings(i18n.get_lang()), lang=i18n.get_lang(),
+                                supported_langs=i18n.SUPPORTED_LANGS,
+                                password_error="New password must be at least 8 characters.")
+    if new_pw != confirm:
+        return render_template("admin_dashboard.html", settings=settings_module.get_settings(),
+                                t=i18n.get_strings(i18n.get_lang()), lang=i18n.get_lang(),
+                                supported_langs=i18n.SUPPORTED_LANGS,
+                                password_error="New password and confirmation don't match.")
+
+    settings_module.update_settings({"admin_password_hash": generate_password_hash(new_pw)})
+    return redirect(url_for("admin.dashboard"))
+
+
 @admin_bp.route("/settings", methods=["POST"])
 @login_required
 def save_settings():
@@ -102,6 +138,7 @@ def save_settings():
         "opensky_client_id": form.get("opensky_client_id", "").strip(),
         "opensky_tier": form.get("opensky_tier", "registered"),
         "ntfy_topic": form.get("ntfy_topic", "").strip(),
+        "ntfy_server": form.get("ntfy_server", "").strip().rstrip("/"),
         "ntfy_messages_enabled": form.get("ntfy_messages_enabled") == "on",
         "ntfy_emergency_squawk_enabled": form.get("ntfy_emergency_squawk_enabled") == "on",
         "brightness": int(form.get("brightness", 80)),
@@ -119,6 +156,9 @@ def save_settings():
         changes[key] = float(val) if val else None
 
     settings_module.update_settings(changes)
+    if changes["ntfy_topic"]:
+        import ntfy_client
+        ntfy_client.start_subscriber(changes["ntfy_topic"])
     return redirect(url_for("admin.dashboard"))
 
 
