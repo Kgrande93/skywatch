@@ -455,7 +455,11 @@ def get_poll_interval_seconds():
     lat, lon = s.get("area_center_lat"), s.get("area_center_lon")
     radius_km = s.get("area_radius_km") or 25
     if lat is None or lon is None:
-        return POLL_INTERVAL_SECONDS  # area not configured yet - fall back rather than guess
+        # Area not configured yet - use the most conservative interval
+        # (anonymous tier, worst-case 4-credit area) rather than
+        # POLL_INTERVAL_SECONDS, which is a local-antenna value with no
+        # relationship to OpenSky's quota at all.
+        return osc.recommended_poll_interval_seconds("anonymous", credits_per_call=4)
     result = geo.estimate(lat, lon, radius_km)
     return osc.recommended_poll_interval_seconds(s.get("opensky_tier", "registered"),
                                                   credits_per_call=result["credits_per_call"])
