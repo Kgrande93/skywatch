@@ -117,14 +117,19 @@ class OpenSkyClient:
             params["extended"] = 1
         return self._get("/states/all", params)
 
-    def states_own(self, serials: Optional[list] = None) -> dict:
+    def states_own(self, serials: Optional[list] = None, extended: bool = True) -> dict:
         """State vectors from your own receiver(s) only. Requires
-        authentication, but is free and has no rate limit."""
+        authentication, but is free and has no rate limit. extended
+        defaults to True here (unlike states_all) since category data is
+        needed for ground-vehicle filtering and there's no credit cost to
+        worry about on this endpoint."""
         if not self.is_authenticated:
             raise RuntimeError("states_own requires client_id/client_secret")
         params = {}
         if serials:
             params["serials"] = serials
+        if extended:
+            params["extended"] = 1
         return self._get("/states/own", params)
 
 

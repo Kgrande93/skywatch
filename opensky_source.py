@@ -101,7 +101,11 @@ def fetch_aircraft_dict():
         if lat is None or lon is None:
             raise RuntimeError("area_center_lat/lon not set - configure the area in the admin panel first")
         bbox = geo.radius_to_bbox(lat, lon, radius_km)
-        result = client.states_all(lamin=bbox[0], lomin=bbox[1], lamax=bbox[2], lomax=bbox[3])
+        # extended=True is required to get category back at all - without
+        # it every aircraft's category is None, which silently defeats
+        # app.py's NON_AIRCRAFT_CATEGORIES ground-vehicle filter (nothing
+        # to match against), so ground vehicles slip through as "aircraft".
+        result = client.states_all(lamin=bbox[0], lomin=bbox[1], lamax=bbox[2], lomax=bbox[3], extended=True)
 
     states = result.get("states") or []
     return {"aircraft": [_state_to_ac_dict(s) for s in states]}
