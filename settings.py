@@ -14,6 +14,14 @@ SETTINGS_FILE = os.environ.get("SETTINGS_FILE", "/var/lib/skywatch/settings.json
 
 _lock = threading.Lock()
 
+# Signaled whenever settings change, so poll_loop() (which may be sleeping
+# for up to an hour during a rate-limit backoff, or tens of seconds for a
+# normal OpenSky interval) wakes up immediately and re-reads the new
+# settings instead of finishing out a stale sleep first. Without this, a
+# data-source switch in the admin panel silently does nothing until
+# whatever sleep happened to be in progress finishes on its own.
+poll_wake_event = threading.Event()
+
 DEFAULTS = {
     "data_source": "local",  # "local" | "opensky_own" | "opensky_all"
     "opensky_client_id": "",
@@ -55,7 +63,8 @@ def update_settings(changes: dict):
         os.makedirs(os.path.dirname(SETTINGS_FILE), exist_ok=True)
         with open(SETTINGS_FILE, "w") as f:
             json.dump(data, f, indent=2)
-        return data
+    poll_wake_event.set()  # outside the lock - nothing here needs it held
+    return data
 
 
 def get_or_create_secret_key():

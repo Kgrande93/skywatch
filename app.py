@@ -479,11 +479,24 @@ def poll_loop():
             # a huge retry_after can't accidentally freeze the app for a day.
             wait = min(e.retry_after or 3600, 3600)
             log.warning("OpenSky rate limit hit, backing off for %ds", wait)
-            time.sleep(wait)
+            _interruptible_sleep(wait)
             continue
         except Exception as e:
             log.exception("Poll failed: %s", e)
-        time.sleep(sleep_seconds)
+        _interruptible_sleep(sleep_seconds)
+
+
+def _interruptible_sleep(seconds):
+    """Like time.sleep(), but wakes immediately if settings change via the
+    admin panel - so switching data source, area, or tier takes effect on
+    the very next poll instead of waiting out whatever sleep (possibly up
+    to an hour, during a rate-limit backoff) happened to already be in
+    progress. wait() returns True if the event fired, False on a normal
+    timeout - either way we clear it and let the loop re-read settings."""
+    woken = settings_module.poll_wake_event.wait(timeout=seconds)
+    if woken:
+        settings_module.poll_wake_event.clear()
+        log.info("Settings changed - waking poll loop early")
 
 
 def poll_once():
