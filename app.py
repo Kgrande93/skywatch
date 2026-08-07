@@ -25,7 +25,12 @@ log = logging.getLogger("skywatch")
 # ---------------------------------------------------------------------------
 # Config (all via environment variables so nothing is hardcoded)
 # ---------------------------------------------------------------------------
-AIRCRAFT_JSON_URL = os.environ.get("AIRCRAFT_JSON_URL", "http://127.0.0.1/tar1090/data/aircraft.json")
+AIRCRAFT_JSON_URL_ENV_DEFAULT = os.environ.get("AIRCRAFT_JSON_URL", "http://127.0.0.1/tar1090/data/aircraft.json")
+
+
+def get_aircraft_json_url():
+    val = settings_module.get_settings().get("aircraft_json_url")
+    return val or AIRCRAFT_JSON_URL_ENV_DEFAULT
 
 
 def get_receiver_location():
@@ -53,8 +58,16 @@ def get_max_range_km():
 # ANTENNA_LOCATION_TEXT retired - no longer meaningful now that the data
 # source (and therefore what "location" even means) is chosen per-instance
 # in the admin panel rather than being a fixed physical antenna.
-TIMEZONE = os.environ.get("TIMEZONE", "Europe/Oslo")
-TZ = ZoneInfo(TIMEZONE)
+TIMEZONE_ENV_DEFAULT = os.environ.get("TIMEZONE", "Europe/Oslo")
+
+
+def get_timezone():
+    val = settings_module.get_settings().get("timezone") or TIMEZONE_ENV_DEFAULT
+    try:
+        return ZoneInfo(val)
+    except Exception:
+        log.warning("Invalid timezone '%s' in settings, falling back to %s", val, TIMEZONE_ENV_DEFAULT)
+        return ZoneInfo(TIMEZONE_ENV_DEFAULT)
 SANTA_CRUISE_ALTITUDE_FT = 241200  # deliberately absurd - well past the Karman line
 SANTA_CLIMB_DESCEND_FRACTION = 0.15  # first/last 15% of each leg is climb/descent
 POLL_INTERVAL_SECONDS = int(os.environ.get("POLL_INTERVAL_SECONDS", "1"))
@@ -512,7 +525,7 @@ def poll_once():
         import opensky_source
         data = opensky_source.fetch_aircraft_dict()
     else:
-        r = requests.get(AIRCRAFT_JSON_URL, timeout=4)
+        r = requests.get(get_aircraft_json_url(), timeout=4)
         r.raise_for_status()
         data = r.json()
     aircraft_list = data.get("aircraft", [])
@@ -750,7 +763,7 @@ def api_status():
         antenna_connected = last_poll is not None and (time.time() - last_poll) < ANTENNA_TIMEOUT_SECONDS
 
         now_utc_epoch = time.time()
-        now_local = datetime.now(TZ)
+        now_local = datetime.now(get_timezone())
         show_snow, show_fireworks = get_holiday_flags(now_local)
         santa = get_santa_status(now_utc_epoch)
 

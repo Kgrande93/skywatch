@@ -36,6 +36,7 @@
   .warning.show{ display:block; }
 
   .field-note{ font-size:12px; color:#8a94a0; margin-top:6px; line-height:1.5; }
+  .row2{ display:flex; gap:12px; margin-top:12px; } .row2 > div{ flex:1; } .row2 label{ margin-top:0; }
 
   .intro-overlay{
     position:fixed; inset:0; background:rgba(0,0,0,0.6); display:flex;
@@ -100,6 +101,10 @@ document.getElementById('introDismiss').addEventListener('click', () => {
       <label>{{ t.admin_max_range }}</label>
       <input type="number" name="max_range_km" min="1" step="1" value="{{ settings.max_range_km or 70 }}">
       <div class="field-note">{{ t.admin_max_range_note }}</div>
+
+      <label>{{ t.admin_local_url }}</label>
+      <input type="text" name="aircraft_json_url" value="{{ settings.aircraft_json_url or '' }}" placeholder="http://127.0.0.1/tar1090/data/aircraft.json">
+      <div class="field-note">{{ t.admin_local_url_note }}</div>
     </fieldset>
 
     <h2>{{ t.admin_area }}</h2>
@@ -108,6 +113,16 @@ document.getElementById('introDismiss').addEventListener('click', () => {
       <label style="margin-top:0">{{ t.admin_receiver_position }}</label>
       <div id="map"></div>
       <div class="field-note">{{ t.admin_receiver_position_note }}</div>
+      <div class="row2">
+        <div>
+          <label>{{ t.admin_latitude }}</label>
+          <input type="text" id="latInput" inputmode="decimal">
+        </div>
+        <div>
+          <label>{{ t.admin_longitude }}</label>
+          <input type="text" id="lonInput" inputmode="decimal">
+        </div>
+      </div>
 
       <div id="radiusSection">
         <div class="slider-row">
@@ -147,6 +162,10 @@ document.getElementById('introDismiss').addEventListener('click', () => {
       <label>{{ t.admin_brightness }}</label>
       <input type="number" name="brightness" min="0" max="100" value="{{ settings.brightness }}">
       <div class="field-note">{{ t.admin_brightness_note }}</div>
+      <label>{{ t.admin_timezone }}</label>
+      <input type="text" name="timezone" value="{{ settings.timezone or '' }}" placeholder="Europe/Oslo">
+      <div class="field-note">{{ t.admin_timezone_note }}</div>
+
       <label>{{ t.admin_language }}</label>
       <select name="language">
         {% for code in supported_langs %}
@@ -196,6 +215,11 @@ const centerLonInput = document.getElementById('centerLon');
 const radiusKmInput = document.getElementById('radiusKm');
 const warning = document.getElementById('warning');
 const tierSelect = document.getElementById('tier');
+const latInput = document.getElementById('latInput');
+const lonInput = document.getElementById('lonInput');
+
+latInput.value = initialLat;
+lonInput.value = initialLon;
 
 function currentCenter(){ return marker.getLatLng(); }
 
@@ -208,6 +232,8 @@ function updateEstimate(){
   centerLatInput.value = c.lat;
   centerLonInput.value = c.lng;
   radiusKmInput.value = radiusKm;
+  latInput.value = c.lat.toFixed(6);
+  lonInput.value = c.lng.toFixed(6);
 
   fetch("{{ url_for('admin.credit_estimate') }}", {
     method: 'POST', headers: {'Content-Type':'application/json'},
@@ -271,6 +297,17 @@ marker.on('dragend', updateEstimate);
 slider.addEventListener('input', updateEstimate);
 tierSelect.addEventListener('change', updateEstimate);
 map.on('click', (e) => { marker.setLatLng(e.latlng); updateEstimate(); });
+
+function applyTypedLatLon(){
+  const lat = parseFloat(latInput.value), lon = parseFloat(lonInput.value);
+  if (isNaN(lat) || isNaN(lon)) return;
+  const ll = { lat, lng: lon };
+  marker.setLatLng(ll);
+  map.panTo(ll);
+  updateEstimate();
+}
+latInput.addEventListener('change', applyTypedLatLon);
+lonInput.addEventListener('change', applyTypedLatLon);
 
 updateEstimate();
 </script>

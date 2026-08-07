@@ -151,6 +151,8 @@ def save_settings():
         "ntfy_emergency_squawk_enabled": form.get("ntfy_emergency_squawk_enabled") == "on",
         "brightness": int(form.get("brightness", 80)),
         "language": form.get("language", "no"),
+        "aircraft_json_url": form.get("aircraft_json_url", "").strip() or None,
+        "timezone": form.get("timezone", "").strip() or None,
     }
     # Only overwrite the secret if a new one was actually typed - the
     # dashboard shows a masked placeholder, not the real value, so an

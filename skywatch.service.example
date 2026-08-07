@@ -6,15 +6,23 @@ After=network.target
 Type=simple
 User=skywatch
 WorkingDirectory=/opt/skywatch
+# Everything below is now a first-run fallback only - once you've saved
+# settings once in the admin panel (http://<host-ip>:5000/admin), the
+# admin panel's values take over and these are ignored. Set
+# ADMIN_PASSWORD_HASH below to actually enable the admin panel.
 Environment=AIRCRAFT_JSON_URL=http://<fr24feed-vm-ip>/tar1090/data/aircraft.json
 Environment=RECEIVER_LAT=<your-antenna-latitude>
 Environment=RECEIVER_LON=<your-antenna-longitude>
 Environment=MAX_RANGE_KM=70
-Environment="REGION_TEXT=<your region name, e.g. Gardermoen area>"
-Environment="ANTENNA_LOCATION_TEXT=<where your antenna actually is, e.g. Somewhere, Some municipality, Country>"
 Environment=TIMEZONE=Europe/Oslo
+
+# These two stay env-only - deployment-level settings, not runtime ones:
 Environment=STATE_FILE=/var/lib/skywatch/last_seen.json
 Environment=PORT=5000
+
+# Required to enable /admin at all - generate with:
+#   venv/bin/python3 -c "from werkzeug.security import generate_password_hash; print(generate_password_hash('yourpassword'))"
+Environment=ADMIN_PASSWORD_HASH=<paste-the-generated-hash-here>
 ExecStart=/opt/skywatch/venv/bin/python /opt/skywatch/app.py
 Restart=on-failure
 RestartSec=5

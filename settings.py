@@ -31,6 +31,8 @@ DEFAULTS = {
     "area_center_lon": None,   # defaults to RECEIVER_LON env var on first run
     "area_radius_km": 25,      # recommended default
     "max_range_km": None,      # falls back to MAX_RANGE_KM env var (default 70) when None
+    "aircraft_json_url": None, # falls back to AIRCRAFT_JSON_URL env var when None
+    "timezone": None,          # falls back to TIMEZONE env var (default Europe/Oslo) when None
     "ntfy_topic": "",
     "ntfy_server": "",  # e.g. https://ntfy.grandedata.no - falls back to https://ntfy.sh when empty
     "ntfy_messages_enabled": False,
