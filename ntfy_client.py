@@ -70,18 +70,25 @@ def _subscribe_loop(topic):
     failure with a short backoff - this must never crash the thread. The
     URL is rebuilt on every reconnect attempt (not just once at thread
     start) so a server change in the admin panel takes effect on the next
-    retry rather than requiring a full restart."""
+    retry rather than requiring a full restart.
+
+    Reconnects are inevitable (network blips, read timeouts, server
+    restarts) - the important part is not losing a message sent during the
+    gap between disconnect and reconnect. `since=<last message id>` asks
+    ntfy to replay anything published after the last one we actually saw,
+    so a brief disconnect no longer means a lost message."""
+    last_id = None
     while True:
         url = f"{_ntfy_base()}/{topic}/sse"
+        params = {"since": last_id} if last_id else {}
         try:
-            # (connect_timeout, read_timeout) - without a read timeout, a
-            # connection that stalls without cleanly closing (common after
-            # network blips) hangs indefinitely instead of reconnecting,
-            # which is what caused the long delay before a message showed
-            # up. ntfy sends a keepalive at least every ~45s, so 60s means
-            # one missed keepalive triggers a reconnect instead of a
-            # silent, unbounded wait.
-            with requests.get(url, stream=True, timeout=(5, 60)) as resp:
+            # (connect_timeout, read_timeout). Some ntfy deployments don't
+            # send a keepalive during quiet periods at all, so a read
+            # timeout here doesn't mean anything is actually wrong - it's
+            # a normal, expected reconnect trigger, not just a stall
+            # detector. The since= catch-up above is what actually
+            # prevents that from losing messages.
+            with requests.get(url, params=params, stream=True, timeout=(5, 90)) as resp:
                 for line in resp.iter_lines():
                     if not line:
                         continue
@@ -92,14 +99,16 @@ def _subscribe_loop(topic):
                         payload = json.loads(line[len("data:"):].strip())
                     except json.JSONDecodeError:
                         continue
+                    if payload.get("id"):
+                        last_id = payload["id"]
                     if payload.get("event") != "message":
                         continue
                     text = payload.get("message", "")
                     if text:
                         _set_banner(text)
         except Exception as e:
-            log.warning("ntfy subscribe connection dropped, retrying in 10s: %s", e)
-        time.sleep(10)
+            log.warning("ntfy subscribe connection dropped, retrying in 3s: %s", e)
+        time.sleep(3)
 
 
 def start_subscriber(topic):
