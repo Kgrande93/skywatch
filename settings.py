@@ -30,6 +30,7 @@ DEFAULTS = {
     "area_center_lat": None,   # defaults to RECEIVER_LAT env var on first run
     "area_center_lon": None,   # defaults to RECEIVER_LON env var on first run
     "area_radius_km": 25,      # recommended default
+    "max_range_km": None,      # falls back to MAX_RANGE_KM env var (default 70) when None
     "ntfy_topic": "",
     "ntfy_server": "",  # e.g. https://ntfy.grandedata.no - falls back to https://ntfy.sh when empty
     "ntfy_messages_enabled": False,

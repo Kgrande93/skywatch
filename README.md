@@ -59,40 +59,24 @@ your own values:
 
 ```bash
 cp skywatch.service.example skywatch.service
-nano skywatch.service   # fill in AIRCRAFT_JSON_URL, RECEIVER_LAT, RECEIVER_LON
+nano skywatch.service   # fill in AIRCRAFT_JSON_URL - see below for everything else
 ```
-
-`app.py`'s defaults for `RECEIVER_LAT`/`RECEIVER_LON` are `0`, and the app
-logs a clear warning on startup if they haven't been set.
 
 ## Other things you need to set
 
-> Your antenna's position (`RECEIVER_LAT`/`RECEIVER_LON`) is **no longer set
-> here** - it's configured through the [admin panel](#admin-panel) instead,
-> since it's also the center point for the OpenSky area query. The env vars
-> still work as a first-run fallback for existing deployments, but the admin
-> panel is now the source of truth once you've saved settings there once.
+> Your antenna's position and max range used to be `RECEIVER_LAT`/
+> `RECEIVER_LON`/`MAX_RANGE_KM` env vars. **They're now set in the
+> [admin panel](#admin-panel)** instead (Data source section) - the env
+> vars still work as a first-run fallback for existing deployments, but
+> the admin panel is the source of truth once you've saved settings there
+> once. `REGION_TEXT` and `ANTENNA_LOCATION_TEXT` have been removed
+> entirely - both were only used by a corner label that no longer exists
+> in the UI.
 
-- `MAX_RANGE_KM` — how far away an aircraft still counts as "in range"
-  (default 70 km). Note this can genuinely be 200-300+ km for a decent
-  antenna with clear line of sight - check the range-discovery log below
-  before assuming a low default is correct.
-- `REGION_TEXT` — the region name shown on screen, e.g. "Gardermoen area".
-  Pick something that roughly matches your actual `MAX_RANGE_KM` coverage
-  area, not just your city - a wide-range antenna will pick up aircraft
-  well outside your immediate local area.
-- `ANTENNA_LOCATION_TEXT` — where your antenna actually is, shown on screen
-  as e.g. "ADS-B antenna is located in <this>."
 - `TIMEZONE` — an IANA timezone name (e.g. `Europe/Oslo`), default
   `Europe/Oslo`. Used for date/time-based features (holiday effects etc.) so
   they trigger at the right local moment regardless of what timezone the
   host machine's system clock happens to be set to.
-
-> Both of these are free text and often contain spaces/commas - the
-> `.example` file already wraps them in quotes
-> (`Environment="REGION_TEXT=..."`). If you ever rewrite these lines by
-> hand, keep the quotes around the whole `KEY=value` pair, not just the
-> value - systemd otherwise silently truncates at the first space.
 
 ## Installation (new LXC, Debian)
 
@@ -137,9 +121,17 @@ require editing `skywatch.service` and restarting the service by hand:
   credits)
 - **OpenSky credentials** - client ID/secret (only needed when an OpenSky
   source is selected and you're not using the anonymous tier)
-- **Area** - an interactive map to set your antenna's position and a
-  coverage radius, with a live estimate of OpenSky credit cost and the
-  resulting update interval as you drag the radius slider
+- **Max range (km)** - how far away an aircraft still counts as "in range".
+  Applies regardless of data source. Safe to set high (200-300+ km) for a
+  local antenna since it costs nothing - check the range-discovery log
+  below before assuming the 70 km default is right for your antenna
+- **Receiver position** - click or drag the marker on the map to set where
+  your antenna actually is. Always active, regardless of data source - it's
+  used for distance calculations either way, not just the OpenSky query
+- **Radius** - only relevant when the data source is "OpenSky - area
+  query" (greyed out otherwise): the coverage radius for that query, with
+  a live estimate of OpenSky credit cost and the resulting update interval
+  as you drag the slider
 - **Notifications** - an [ntfy](https://ntfy.sh) topic for two independent
   things: (1) messages sent to that topic show up as a banner on the
   physical [Skywatch Lite](https://github.com/Kgrande93/skywatch-lite)

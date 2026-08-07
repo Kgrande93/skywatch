@@ -43,8 +43,13 @@ def get_receiver_location():
         float(os.environ.get("RECEIVER_LAT", "0")),
         float(os.environ.get("RECEIVER_LON", "0")),
     )
-MAX_RANGE_KM = float(os.environ.get("MAX_RANGE_KM", "70"))
-REGION_TEXT = os.environ.get("REGION_TEXT", "Gardermoen area")
+MAX_RANGE_KM_ENV_DEFAULT = float(os.environ.get("MAX_RANGE_KM", "70"))
+
+
+def get_max_range_km():
+    """Same settings-first, env-fallback pattern as get_receiver_location()."""
+    val = settings_module.get_settings().get("max_range_km")
+    return float(val) if val is not None else MAX_RANGE_KM_ENV_DEFAULT
 # ANTENNA_LOCATION_TEXT retired - no longer meaningful now that the data
 # source (and therefore what "location" even means) is chosen per-instance
 # in the admin panel rather than being a fixed physical antenna.
@@ -560,7 +565,7 @@ def poll_once():
             "altitude_ft": alt,
         })
 
-        if dist <= MAX_RANGE_KM:
+        if dist <= get_max_range_km():
             candidates.append((dist, ac))
 
     # Drop tracking for any hex no longer showing ground status - it
@@ -726,15 +731,13 @@ def get_santa_status(now_utc_epoch):
 @app.route("/")
 def index():
     lang = i18n.get_lang()
-    return render_template("index.html", region_text=REGION_TEXT,
-                            t=i18n.get_strings(lang), lang=lang)
+    return render_template("index.html", t=i18n.get_strings(lang), lang=lang)
 
 
 @app.route("/kiosk")
 def kiosk():
     lang = i18n.get_lang()
-    return render_template("kiosk.html", region_text=REGION_TEXT,
-                            t=i18n.get_strings(lang), lang=lang)
+    return render_template("kiosk.html", t=i18n.get_strings(lang), lang=lang)
 
 
 

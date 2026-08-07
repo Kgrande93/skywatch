@@ -159,7 +159,7 @@ def save_settings():
     if new_secret:
         changes["opensky_client_secret"] = new_secret
 
-    for key in ("area_center_lat", "area_center_lon", "area_radius_km"):
+    for key in ("area_center_lat", "area_center_lon", "area_radius_km", "max_range_km"):
         val = form.get(key, "").strip()
         changes[key] = float(val) if val else None
 

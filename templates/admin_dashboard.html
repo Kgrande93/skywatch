@@ -96,24 +96,31 @@ document.getElementById('introDismiss').addEventListener('click', () => {
         <option value="registered" {% if settings.opensky_tier == 'registered' %}selected{% endif %}>{{ t.admin_tier_registered }}</option>
         <option value="feeder" {% if settings.opensky_tier == 'feeder' %}selected{% endif %}>{{ t.admin_tier_feeder }}</option>
       </select>
+
+      <label>{{ t.admin_max_range }}</label>
+      <input type="number" name="max_range_km" min="1" step="1" value="{{ settings.max_range_km or 70 }}">
+      <div class="field-note">{{ t.admin_max_range_note }}</div>
     </fieldset>
 
     <h2>{{ t.admin_area }}</h2>
-    <div id="areaIrrelevantNote" style="display:none; font-size:12.5px; color:#8a94a0; margin:6px 0 -4px;">
-      {{ t.admin_area_irrelevant }}
-    </div>
+
     <fieldset id="areaFieldset">
+      <label style="margin-top:0">{{ t.admin_receiver_position }}</label>
       <div id="map"></div>
-      <div class="slider-row">
-        <div class="slider-label"><span>{{ t.admin_radius }}</span><b id="radiusLabel">25 km</b></div>
-        <input type="range" id="radiusSlider" min="5" max="500" value="{{ settings.area_radius_km or 25 }}">
+      <div class="field-note">{{ t.admin_receiver_position_note }}</div>
+
+      <div id="radiusSection">
+        <div class="slider-row">
+          <div class="slider-label"><span>{{ t.admin_radius }}</span><b id="radiusLabel">25 km</b></div>
+          <input type="range" id="radiusSlider" min="5" max="500" value="{{ settings.area_radius_km or 25 }}">
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="num" id="statArea">–</div><div class="lbl">{{ t.admin_stat_area }}</div></div>
+          <div class="stat"><div class="num" id="statCredits">–</div><div class="lbl">{{ t.admin_stat_credits }}</div></div>
+          <div class="stat"><div class="num" id="statInterval">–</div><div class="lbl">{{ t.admin_stat_interval }}</div></div>
+        </div>
+        <div class="warning" id="warning">{{ t.admin_area_warning }}</div>
       </div>
-      <div class="stats">
-        <div class="stat"><div class="num" id="statArea">–</div><div class="lbl">{{ t.admin_stat_area }}</div></div>
-        <div class="stat"><div class="num" id="statCredits">–</div><div class="lbl">{{ t.admin_stat_credits }}</div></div>
-        <div class="stat"><div class="num" id="statInterval">–</div><div class="lbl">{{ t.admin_stat_interval }}</div></div>
-      </div>
-      <div class="warning" id="warning">{{ t.admin_area_warning }}</div>
       <input type="hidden" id="centerLat" name="area_center_lat" value="{{ settings.area_center_lat }}">
       <input type="hidden" id="centerLon" name="area_center_lon" value="{{ settings.area_center_lon }}">
       <input type="hidden" id="radiusKm" name="area_radius_km" value="{{ settings.area_radius_km or 25 }}">
@@ -245,10 +252,13 @@ function updateSourceUI(){
   tierSelect.disabled = (source === 'local');
   tierSelect.style.opacity = (source === 'local') ? '0.4' : '1';
 
+  // The marker/position is always relevant (used for distance math
+  // regardless of source) - only the radius slider and credit stats are
+  // specific to the OpenSky area query, so only that sub-section is greyed out.
   const areaMatters = (source === 'opensky_all');
-  document.getElementById('areaFieldset').style.opacity = areaMatters ? '1' : '0.4';
-  document.getElementById('areaFieldset').style.pointerEvents = areaMatters ? 'auto' : 'none';
-  document.getElementById('areaIrrelevantNote').style.display = areaMatters ? 'none' : 'block';
+  const radiusSection = document.getElementById('radiusSection');
+  radiusSection.style.opacity = areaMatters ? '1' : '0.4';
+  radiusSection.style.pointerEvents = areaMatters ? 'auto' : 'none';
 
   activeSourceBadge.textContent = {{ t.admin_currently_active | tojson }} + ': ' + (SOURCE_LABELS[source] || source);
 }
