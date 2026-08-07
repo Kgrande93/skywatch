@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Skywatch Admin — Login</title>
+<style>
+  body{ font-family:system-ui,sans-serif; background:#0b0d10; color:#f2f5f7;
+    display:flex; align-items:center; justify-content:center; height:100vh; margin:0; }
+  form{ background:#12161a; padding:32px; border-radius:10px; border:1px solid #242b31; width:280px; }
+  h1{ font-size:16px; margin:0 0 18px; }
+  input{ width:100%; padding:9px 10px; margin-bottom:14px; background:#0e1216;
+    border:1px solid #242b31; border-radius:6px; color:#f2f5f7; box-sizing:border-box; }
+  button{ width:100%; padding:9px; background:#3ddc84; border:none; border-radius:6px;
+    color:#0b0d10; font-weight:600; cursor:pointer; }
+  .error{ color:#ff4d4d; font-size:13px; margin-bottom:14px; }
+</style>
+</head>
+<body>
+<form method="post">
+  <h1>Skywatch Admin</h1>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <input type="password" name="password" placeholder="Admin password" autofocus required>
+  <button type="submit">Log in</button>
+</form>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Skywatch Admin</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  body{ font-family:system-ui,sans-serif; background:#0b0d10; color:#f2f5f7; margin:0; padding:32px; }
+  .wrap{ max-width:680px; margin:0 auto; }
+  h1{ font-size:20px; } h2{ font-size:14px; color:#8a94a0; margin-top:32px; text-transform:uppercase; letter-spacing:0.05em; }
+  fieldset{ border:1px solid #242b31; border-radius:10px; padding:18px 20px; margin-top:10px; }
+  label{ display:block; font-size:13px; color:#8a94a0; margin-top:12px; }
+  input[type=text], input[type=password], input[type=number], select{
+    width:100%; padding:8px 10px; margin-top:4px; background:#0e1216;
+    border:1px solid #242b31; border-radius:6px; color:#f2f5f7; box-sizing:border-box; }
+  .checkbox-row{ display:flex; align-items:center; gap:8px; margin-top:14px; }
+  .checkbox-row input{ width:auto; margin:0; }
+  button{ margin-top:20px; padding:10px 20px; background:#3ddc84; border:none;
+    border-radius:6px; color:#0b0d10; font-weight:600; cursor:pointer; }
+  a.logout{ color:#8a94a0; font-size:12px; float:right; }
+
+  #map{ height:280px; border-radius:8px; margin-top:12px; border:1px solid #242b31; }
+  .slider-row{ margin-top:14px; }
+  .slider-row input[type=range]{ width:100%; }
+  .slider-label{ display:flex; justify-content:space-between; font-size:12px; color:#8a94a0; }
+  .slider-label b{ color:#f2f5f7; }
+
+  .stats{ display:flex; gap:10px; margin-top:14px; }
+  .stat{ flex:1; background:#0e1216; border:1px solid #242b31; border-radius:8px; padding:10px 12px; }
+  .stat .num{ font-size:18px; font-weight:700; }
+  .stat .lbl{ font-size:11px; color:#8a94a0; margin-top:2px; }
+
+  .warning{ display:none; margin-top:12px; background:rgba(255,180,84,0.1);
+    border:1px solid rgba(255,180,84,0.35); color:#ffb454; border-radius:8px;
+    padding:10px 14px; font-size:12.5px; line-height:1.5; }
+  .warning.show{ display:block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="logout" href="{{ url_for('admin.logout') }}">Log out</a>
+  <h1>Skywatch Admin</h1>
+
+  <form method="post" action="{{ url_for('admin.save_settings') }}">
+    <h2>Data source</h2>
+    <fieldset>
+      <label>Source</label>
+      <select name="data_source">
+        <option value="local" {% if settings.data_source == 'local' %}selected{% endif %}>Local antenna (readsb/tar1090)</option>
+        <option value="opensky_own" {% if settings.data_source == 'opensky_own' %}selected{% endif %}>OpenSky — my own receiver (free)</option>
+        <option value="opensky_all" {% if settings.data_source == 'opensky_all' %}selected{% endif %}>OpenSky — area query (uses credits)</option>
+      </select>
+
+      <label>OpenSky client ID</label>
+      <input type="text" name="opensky_client_id" value="{{ settings.opensky_client_id }}">
+      <label>OpenSky client secret</label>
+      <input type="password" name="opensky_client_secret" placeholder="{{ '••••••••' if settings.opensky_client_secret else 'not set' }}">
+
+      <label>OpenSky account tier</label>
+      <select name="opensky_tier" id="tier">
+        <option value="anonymous" {% if settings.opensky_tier == 'anonymous' %}selected{% endif %}>Anonymous (400 credits/day)</option>
+        <option value="registered" {% if settings.opensky_tier == 'registered' %}selected{% endif %}>Registered (4,000 credits/day)</option>
+        <option value="feeder" {% if settings.opensky_tier == 'feeder' %}selected{% endif %}>Active feeder (8,000 credits/day)</option>
+      </select>
+    </fieldset>
+
+    <h2>Area (only used for "OpenSky — area query")</h2>
+    <fieldset>
+      <div id="map"></div>
+      <div class="slider-row">
+        <div class="slider-label"><span>Radius</span><b id="radiusLabel">25 km</b></div>
+        <input type="range" id="radiusSlider" min="5" max="500" value="{{ settings.area_radius_km or 25 }}">
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="num" id="statArea">–</div><div class="lbl">sq° area</div></div>
+        <div class="stat"><div class="num" id="statCredits">–</div><div class="lbl">credits/call</div></div>
+        <div class="stat"><div class="num" id="statInterval">–</div><div class="lbl">sec/update</div></div>
+      </div>
+      <div class="warning" id="warning">
+        You've selected a larger area than the recommended 25 km radius.
+        This costs more credits per update, which means the display will
+        refresh less often to make your daily quota last a full day. For
+        most local flight-spotting use, 25 km already covers a generous
+        radius — a bigger area mainly helps if you want to catch high-altitude
+        traffic passing further out.
+      </div>
+      <input type="hidden" id="centerLat" name="area_center_lat" value="{{ settings.area_center_lat }}">
+      <input type="hidden" id="centerLon" name="area_center_lon" value="{{ settings.area_center_lon }}">
+      <input type="hidden" id="radiusKm" name="area_radius_km" value="{{ settings.area_radius_km or 25 }}">
+    </fieldset>
+
+    <h2>Notifications</h2>
+    <fieldset>
+      <label>Ntfy topic</label>
+      <input type="text" name="ntfy_topic" value="{{ settings.ntfy_topic }}">
+      <div class="checkbox-row">
+        <input type="checkbox" name="ntfy_messages_enabled" {% if settings.ntfy_messages_enabled %}checked{% endif %}>
+        <label style="margin:0">Show messages sent to this topic as a screen banner (10 min)</label>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" name="ntfy_emergency_squawk_enabled" {% if settings.ntfy_emergency_squawk_enabled %}checked{% endif %}>
+        <label style="margin:0">Send an alert to this topic on emergency squawk (7500/7600/7700)</label>
+      </div>
+    </fieldset>
+
+    <h2>Display</h2>
+    <fieldset>
+      <label>Brightness (0-100)</label>
+      <input type="number" name="brightness" min="0" max="100" value="{{ settings.brightness }}">
+    </fieldset>
+
+    <button type="submit">Save settings</button>
+  </form>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const initialLat = {{ settings.area_center_lat or 60.0 }};
+const initialLon = {{ settings.area_center_lon or 10.0 }};
+const initialRadiusKm = {{ settings.area_radius_km or 25 }};
+
+const map = L.map('map').setView([initialLat, initialLon], 8);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
+}).addTo(map);
+
+const marker = L.marker([initialLat, initialLon], { draggable: true }).addTo(map);
+const circle = L.circle([initialLat, initialLon], {
+  radius: initialRadiusKm * 1000, color: '#3ddc84', fillColor: '#3ddc84', fillOpacity: 0.12
+}).addTo(map);
+
+const slider = document.getElementById('radiusSlider');
+const radiusLabel = document.getElementById('radiusLabel');
+const centerLatInput = document.getElementById('centerLat');
+const centerLonInput = document.getElementById('centerLon');
+const radiusKmInput = document.getElementById('radiusKm');
+const warning = document.getElementById('warning');
+const tierSelect = document.getElementById('tier');
+
+function currentCenter(){ return marker.getLatLng(); }
+
+function updateEstimate(){
+  const c = currentCenter();
+  const radiusKm = parseInt(slider.value, 10);
+  radiusLabel.textContent = radiusKm + ' km';
+  circle.setLatLng(c);
+  circle.setRadius(radiusKm * 1000);
+  centerLatInput.value = c.lat;
+  centerLonInput.value = c.lng;
+  radiusKmInput.value = radiusKm;
+
+  fetch("{{ url_for('admin.credit_estimate') }}", {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ center_lat: c.lat, center_lon: c.lng, radius_km: radiusKm, tier: tierSelect.value })
+  }).then(r => r.json()).then(d => {
+    if (d.error) return;
+    document.getElementById('statArea').textContent = d.area_sq_deg;
+    document.getElementById('statCredits').textContent = d.credits_per_call;
+    document.getElementById('statInterval').textContent = d.recommended_interval_seconds;
+    warning.classList.toggle('show', d.over_recommended);
+  }).catch(() => {});
+}
+
+marker.on('drag', () => { circle.setLatLng(marker.getLatLng()); });
+marker.on('dragend', updateEstimate);
+slider.addEventListener('input', updateEstimate);
+tierSelect.addEventListener('change', updateEstimate);
+map.on('click', (e) => { marker.setLatLng(e.latlng); updateEstimate(); });
+
+updateEstimate();
+</script>
+</body>
+</html>
