@@ -14,7 +14,8 @@ import os
 import time
 from functools import wraps
 
-from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
+import secrets
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 import settings as settings_module
@@ -53,6 +54,14 @@ def _record_failed_attempt(ip):
 def login_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
+        # Re-check that a password actually exists on every request, not
+        # just whether the session says "authenticated" - otherwise an
+        # old session cookie stays valid forever even after the password
+        # is cleared/reset, which defeats the point of being able to
+        # reset it at all.
+        if not current_password_hash():
+            session.pop("admin_authenticated", None)
+            return redirect(url_for("admin.setup"))
         if not session.get("admin_authenticated"):
             return redirect(url_for("admin.login"))
         return view(*args, **kwargs)
@@ -79,7 +88,12 @@ def setup():
         elif new_pw != confirm:
             error = t["admin_setup_error_match"]
         else:
-            settings_module.update_settings({"admin_password_hash": generate_password_hash(new_pw)})
+            new_key = secrets.token_hex(32)
+            settings_module.update_settings({
+                "admin_password_hash": generate_password_hash(new_pw),
+                "flask_secret_key": new_key,
+            })
+            current_app.secret_key = new_key
             session["admin_authenticated"] = True
             session.permanent = True
             return redirect(url_for("admin.dashboard"))
@@ -160,7 +174,18 @@ def change_password():
                                 supported_langs=i18n.SUPPORTED_LANGS,
                                 password_error="New password and confirmation don't match.")
 
-    settings_module.update_settings({"admin_password_hash": generate_password_hash(new_pw)})
+    new_key = secrets.token_hex(32)
+    settings_module.update_settings({
+        "admin_password_hash": generate_password_hash(new_pw),
+        "flask_secret_key": new_key,
+    })
+    # Rotating the key invalidates every existing session (including this
+    # one) since old cookies are signed with the old key - re-establish
+    # this browser's session under the new key so the redirect below
+    # doesn't immediately bounce back to login.
+    current_app.secret_key = new_key
+    session["admin_authenticated"] = True
+    session.permanent = True
     return redirect(url_for("admin.dashboard"))
 
 
