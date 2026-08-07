@@ -59,11 +59,38 @@ def login_required(view):
     return wrapped
 
 
+@admin_bp.route("/setup", methods=["GET", "POST"])
+def setup():
+    """First-run flow: if no password is configured anywhere (env or
+    settings.json), let the user set one directly in the browser instead
+    of having to generate a werkzeug hash in a terminal. Once a password
+    exists (either way), this route redirects to the normal login."""
+    if current_password_hash():
+        return redirect(url_for("admin.login"))
+
+    lang = i18n.get_lang()
+    t = i18n.get_strings(lang)
+    error = None
+    if request.method == "POST":
+        new_pw = request.form.get("new_password", "")
+        confirm = request.form.get("confirm_password", "")
+        if len(new_pw) < 8:
+            error = t["admin_setup_error_length"]
+        elif new_pw != confirm:
+            error = t["admin_setup_error_match"]
+        else:
+            settings_module.update_settings({"admin_password_hash": generate_password_hash(new_pw)})
+            session["admin_authenticated"] = True
+            session.permanent = True
+            return redirect(url_for("admin.dashboard"))
+    return render_template("admin_setup.html", error=error, t=t, lang=lang)
+
+
 @admin_bp.route("/login", methods=["GET", "POST"])
 def login():
     password_hash = current_password_hash()
     if not password_hash:
-        return "No admin password is configured yet - set ADMIN_PASSWORD_HASH to enable the admin panel.", 503
+        return redirect(url_for("admin.setup"))
 
     lang = i18n.get_lang()
     t = i18n.get_strings(lang)

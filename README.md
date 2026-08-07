@@ -94,7 +94,7 @@ sudo -u skywatch python3 -m venv venv
 sudo -u skywatch venv/bin/pip install -r requirements.txt
 
 cp skywatch.service.example skywatch.service
-nano skywatch.service   # fill in your own values, see above, plus ADMIN_PASSWORD_HASH (see "Admin panel" below)
+nano skywatch.service   # PORT and STATE_FILE only - everything else (including the admin password) is set up in the browser, see "Admin panel" below
 
 sudo cp skywatch.service /etc/systemd/system/
 sudo systemctl daemon-reload
@@ -149,26 +149,35 @@ require editing `skywatch.service` and restarting the service by hand:
   English - one shared setting, not per-visitor, since a wall-mounted
   display has no one to individually prefer a language)
 
-**Setup**: the admin panel is disabled until you set a password. Generate a
-hash (never store the plain password anywhere):
+**Setup**: just visit `http://<host-ip>:5000/admin` on a fresh install - if
+no password is configured yet, you'll land on a one-time setup screen to
+choose one directly in the browser. No terminal, no hash generation, no
+service file editing.
+
+<details>
+<summary>Alternative: set it via <code>skywatch.service</code> instead</summary>
+
+If you'd rather set the password before ever opening the admin panel (e.g.
+scripted/headless deployment), generate a hash and add it as an env var -
+never store the plain password anywhere:
 
 ```bash
 cd /opt/skywatch
 venv/bin/python3 -c "from werkzeug.security import generate_password_hash; print(generate_password_hash('your-password-here'))"
 ```
 
-Add the output to `skywatch.service`:
-
 ```
 Environment=ADMIN_PASSWORD_HASH=scrypt:...
 ```
-
-Then reload and restart:
 
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl restart skywatch
 ```
+
+Whichever password gets set last (browser setup screen, or this env var
+after a restart) is the one that's active - both write to the same place.
+</details>
 
 ## Finding your antenna's real range
 
