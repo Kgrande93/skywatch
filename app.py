@@ -458,6 +458,8 @@ def enrich(ac):
         "vertical_rate_fpm": vrate,
         "groundspeed_kt": gs,
         "squawk": ac.get("squawk"),
+        "position_source": ac.get("_position_source", "adsb"),
+        "callsign_is_registration_fallback": ac.get("_callsign_is_fallback", False),
         "emergency": ac.get("emergency") if ac.get("emergency") not in (None, "none") else None,
         "lat": lat,
         "lon": lon,
@@ -557,6 +559,7 @@ def poll_once():
             continue
 
         lat, lon = ac.get("lat"), ac.get("lon")
+        ac["_position_source"] = "adsb"
         if lat is None or lon is None:
             # Mode-S-only contacts (no recent ADS-B position broadcast) omit
             # top-level lat/lon entirely, but readsb still keeps a
@@ -565,6 +568,7 @@ def poll_once():
             last_pos = ac.get("lastPosition") or {}
             if last_pos.get("seen_pos", 9999) < 300:
                 lat, lon = last_pos.get("lat"), last_pos.get("lon")
+                ac["_position_source"] = "mode_s"
         callsign = (ac.get("flight") or "").strip()
         hexid = ac.get("hex")
 
@@ -581,7 +585,18 @@ def poll_once():
         if lat is None or lon is None:
             continue
         if not VALID_CALLSIGN.match(callsign) or callsign in NON_FLIGHT_CALLSIGNS:
-            continue
+            # Callsign not decoded yet (readsb shows garbage like '@@@@@@@@'
+            # right after first acquiring a contact, before the ident
+            # message arrives) - rather than hiding an aircraft we can
+            # otherwise see fine, fall back to its registration (we may
+            # already have it from the db-file) so it still shows up.
+            reg = (ac.get("r") or "").replace("-", "").strip().upper()
+            fallback = reg if VALID_CALLSIGN.match(reg) else (hexid.upper() if hexid else None)
+            if not fallback:
+                continue
+            callsign = fallback
+            ac["flight"] = fallback
+            ac["_callsign_is_fallback"] = True
 
         alt = ac.get("alt_baro")
         if not isinstance(alt, (int, float)):
