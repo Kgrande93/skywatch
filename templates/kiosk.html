@@ -51,6 +51,12 @@
   }
   .status-dot { width: 10px; height: 10px; border-radius: 50%; }
   .status-dot.live { background: #37e07a; box-shadow: 0 0 8px #37e07a; }
+  .source-dot {
+    display: inline-block; width: 0.5em; height: 0.5em; border-radius: 50%;
+    margin-right: 0.4em; vertical-align: middle;
+  }
+  .source-dot.adsb { background: #37e07a; box-shadow: 0 0 6px #37e07a; }
+  .source-dot.mode_s { background: #ffb454; box-shadow: 0 0 6px #ffb454; }
   .status-dot.waiting { background: #2e90ff; box-shadow: 0 0 8px #2e90ff; }
   .status-dot.idle { background: var(--muted); }
   .status-dot.error { background: #ff4d4d; box-shadow: 0 0 8px #ff4d4d; }
@@ -248,6 +254,9 @@ function renderActive(ac) {
   const regWithFlag = flag && ac.registration ? `${flag} ${ac.registration}` : ac.registration;
   const regParts = [regWithFlag, ac.airline_name].filter(Boolean);
   if (regParts.length) html += `<div class="line small">${regParts.join(' &middot; ')}</div>`;
+  const srcClass = ac.position_source === 'mode_s' ? 'mode_s' : 'adsb';
+  const srcLabel = ac.position_source === 'mode_s' ? 'Mode S' : 'ADS-B';
+  html += `<div class="line small"><span class="source-dot ${srcClass}"></span>${srcLabel}</div>`;
 
   const squawkStr = ac.squawk || '\u2013';
   const squawkIsEmergency = ac.squawk && EMERGENCY_SQUAWKS[ac.squawk];

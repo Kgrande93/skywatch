@@ -75,6 +75,12 @@
   .status-dot.live { background: #37e07a; box-shadow: 0 0 8px #37e07a; }
   .status-dot.idle { background: var(--muted); }
   .status-dot.error { background: #ff4d4d; box-shadow: 0 0 8px #ff4d4d; }
+  .source-dot {
+    display: inline-block; width: 0.5em; height: 0.5em; border-radius: 50%;
+    margin-right: 0.4em; vertical-align: middle;
+  }
+  .source-dot.adsb { background: #37e07a; box-shadow: 0 0 6px #37e07a; }
+  .source-dot.mode_s { background: #ffb454; box-shadow: 0 0 6px #ffb454; }
   .status-label {
     font-size: clamp(10px, 1.1vw, 16px);
     letter-spacing: 0.02em;
@@ -501,6 +507,10 @@ function renderActive(ac) {
   else if (ac.category_label && (ac.category_always_show || !ac.airline_name)) typeLabel = ac.category_label;
   const regType = [regWithFlag, ac.aircraft_type, typeLabel].filter(Boolean).join(' · ');
   html += `<div class="reg-type">${regType}</div>`;
+  const srcClass = ac.position_source === 'mode_s' ? 'mode_s' : 'adsb';
+  const srcLabel = ac.position_source === 'mode_s' ? 'Mode S' : 'ADS-B';
+  const srcTitle = ac.position_source === 'mode_s' ? T.unknown_altitude_tooltip : '';
+  html += `<div class="reg-type"><span class="source-dot ${srcClass}" title="${srcTitle}"></span>${srcLabel}</div>`;
   html += '</div>';
   html += '</div>';
 
