@@ -236,7 +236,7 @@ function renderActive(ac) {
   const typeParts = [ac.aircraft_type, typeLabel].filter(Boolean);
   if (typeParts.length) html += `<div class="line muted">${typeParts.join(' &middot; ')}</div>`;
 
-  let altStr = ac.altitude_ft != null ? `${Math.round(ac.altitude_ft)} ft` : '\u2013';
+  let altStr = ac.altitude_ft != null ? `${Math.round(ac.altitude_ft)} ft` : T.unknown_altitude;
   if (ac.altitude_ft != null && ac.vertical_rate_fpm != null) {
     if (ac.vertical_rate_fpm > 150) altStr += ' &#8593;';
     else if (ac.vertical_rate_fpm < -150) altStr += ' &#8595;';

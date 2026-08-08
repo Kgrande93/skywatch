@@ -513,7 +513,7 @@ function renderActive(ac) {
     gsStr = '–';
     distStr = '–';
   } else {
-    altStr = ac.altitude_ft != null ? `${Math.round(ac.altitude_ft)} ft` : '–';
+    altStr = ac.altitude_ft != null ? `${Math.round(ac.altitude_ft)} ft` : T.unknown_altitude;
     if (ac.altitude_ft != null && ac.vertical_rate_fpm != null) {
       if (ac.vertical_rate_fpm > 150) altStr += ' &#8593;';
       else if (ac.vertical_rate_fpm < -150) altStr += ' &#8595;';
