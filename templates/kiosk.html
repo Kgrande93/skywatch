@@ -254,9 +254,12 @@ function renderActive(ac) {
   const regWithFlag = flag && ac.registration ? `${flag} ${ac.registration}` : ac.registration;
   const regParts = [regWithFlag, ac.airline_name].filter(Boolean);
   if (regParts.length) html += `<div class="line small">${regParts.join(' &middot; ')}</div>`;
-  const srcClass = ac.position_source === 'mode_s' ? 'mode_s' : 'adsb';
-  const srcLabel = ac.position_source === 'mode_s' ? 'Mode S' : 'ADS-B';
-  html += `<div class="line small"><span class="source-dot ${srcClass}"></span>${srcLabel}</div>`;
+  // ADS-B is the default/common case and doesn't need to announce itself every
+  // time - only Mode S (the exception, and the reason altitude might be
+  // missing) is worth a dedicated line. Keeps the common case uncluttered.
+  if (ac.position_source === 'mode_s') {
+    html += `<div class="line small"><span class="source-dot mode_s"></span>Mode S</div>`;
+  }
 
   const squawkStr = ac.squawk || '\u2013';
   const squawkIsEmergency = ac.squawk && EMERGENCY_SQUAWKS[ac.squawk];

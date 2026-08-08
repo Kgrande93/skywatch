@@ -507,10 +507,11 @@ function renderActive(ac) {
   else if (ac.category_label && (ac.category_always_show || !ac.airline_name)) typeLabel = ac.category_label;
   const regType = [regWithFlag, ac.aircraft_type, typeLabel].filter(Boolean).join(' · ');
   html += `<div class="reg-type">${regType}</div>`;
-  const srcClass = ac.position_source === 'mode_s' ? 'mode_s' : 'adsb';
-  const srcLabel = ac.position_source === 'mode_s' ? 'Mode S' : 'ADS-B';
-  const srcTitle = ac.position_source === 'mode_s' ? T.unknown_altitude_tooltip : '';
-  html += `<div class="reg-type"><span class="source-dot ${srcClass}" title="${srcTitle}"></span>${srcLabel}</div>`;
+  // ADS-B is the default/common case - only call out the exception (Mode S,
+  // the reason altitude might be missing) instead of labeling every aircraft.
+  if (ac.position_source === 'mode_s') {
+    html += `<div class="reg-type"><span class="source-dot mode_s" title="${T.unknown_altitude_tooltip}"></span>Mode S</div>`;
+  }
   html += '</div>';
   html += '</div>';
 
