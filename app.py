@@ -557,6 +557,14 @@ def poll_once():
             continue
 
         lat, lon = ac.get("lat"), ac.get("lon")
+        if lat is None or lon is None:
+            # Mode-S-only contacts (no recent ADS-B position broadcast) omit
+            # top-level lat/lon entirely, but readsb still keeps a
+            # lastPosition with how many seconds old it is. Use it if it's
+            # not too stale - still worth showing, just less precise.
+            last_pos = ac.get("lastPosition") or {}
+            if last_pos.get("seen_pos", 9999) < 300:
+                lat, lon = last_pos.get("lat"), last_pos.get("lon")
         callsign = (ac.get("flight") or "").strip()
         hexid = ac.get("hex")
 
@@ -578,8 +586,8 @@ def poll_once():
         alt = ac.get("alt_baro")
         if not isinstance(alt, (int, float)):
             alt = ac.get("alt_geom")  # fall back for aircraft that only send geometric altitude
-        if not isinstance(alt, (int, float)):  # still nothing usable - skip
-            continue
+        if not isinstance(alt, (int, float)):
+            alt = None  # Mode-S-only contact with no altitude broadcast - still show it, just unknown
         receiver_lat, receiver_lon = get_receiver_location()
         dist = haversine_km(receiver_lat, receiver_lon, lat, lon)
 
