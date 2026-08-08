@@ -119,6 +119,10 @@ _callsign_cache = {}  # callsign -> (expiry_ts, adsbdb_response_or_None)
 _aircraft_cache = {}  # hex -> (expiry_ts, adsbdb_response_or_None)
 _max_distance_by_hex = {}  # hex -> farthest distance_km ever recorded for that aircraft
 _ground_since = {}  # hex -> epoch when this aircraft was first seen with ground status
+_seen_airborne = set()  # hexes we've actually observed in flight (valid altitude) at some point -
+                         # only these are eligible to be shown as "landed" when they reach ground status.
+                         # A fresh aircraft appearing on ground with no such history is far more likely
+                         # about to depart (transponder powers on before takeoff) than freshly landed.
 _emergency_alerted = set()  # hex codes we've already sent an ntfy alert for
 
 EMERGENCY_SQUAWKS = {"7500": "HIJACK", "7600": "RADIO FAILURE", "7700": "GENERAL EMERGENCY"}
@@ -558,9 +562,12 @@ def poll_once():
 
         if (ac.get("alt_baro") == "ground" and hexid and callsign
                 and VALID_CALLSIGN.match(callsign) and callsign not in NON_FLIGHT_CALLSIGNS):
-            ground_hexes_now.add(hexid)
-            if hexid not in _ground_since:
-                _ground_since[hexid] = now
+            if hexid in _seen_airborne:
+                ground_hexes_now.add(hexid)
+                if hexid not in _ground_since:
+                    _ground_since[hexid] = now
+            # else: on the ground with no flight history from us yet - likely about
+            # to depart, not landed. Don't track/display it as a "landed" aircraft.
             continue
 
         if lat is None or lon is None:
@@ -590,6 +597,8 @@ def poll_once():
             "altitude_ft": alt,
         })
 
+        _seen_airborne.add(hexid)
+
         max_range = get_max_range_km()
         if max_range is None or dist <= max_range:
             candidates.append((dist, ac))
@@ -599,6 +608,7 @@ def poll_once():
     for hexid in list(_ground_since.keys()):
         if hexid not in ground_hexes_now:
             del _ground_since[hexid]
+            _seen_airborne.discard(hexid)
 
     ground_aircraft = [ac for ac in aircraft_list
                        if ac.get("hex") in ground_hexes_now]
