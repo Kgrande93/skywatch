@@ -114,7 +114,18 @@ _state = {
     "last": None,          # last known aircraft + timestamp, enriched, survives restarts
     "last_poll_success_epoch": None,  # last time we successfully fetched aircraft.json
 }
-ANTENNA_TIMEOUT_SECONDS = int(os.environ.get("ANTENNA_TIMEOUT_SECONDS", "20"))
+ANTENNA_TIMEOUT_SECONDS_ENV_DEFAULT = int(os.environ.get("ANTENNA_TIMEOUT_SECONDS", "20"))
+
+
+def get_antenna_timeout_seconds():
+    """The 'antenna connected' indicator must tolerate at least one full
+    poll cycle of silence, or it flips to disconnected between every poll
+    even when everything is working - which is exactly what happened with
+    OpenSky's ~237s anonymous-tier interval against a fixed 20s timeout.
+    Scales with whatever the current poll interval actually is, with a
+    floor at the configured/default value for fast local polling."""
+    interval = get_poll_interval_seconds()
+    return max(ANTENNA_TIMEOUT_SECONDS_ENV_DEFAULT, int(interval * 2.5))
 _callsign_cache = {}  # callsign -> (expiry_ts, adsbdb_response_or_None)
 _aircraft_cache = {}  # hex -> (expiry_ts, adsbdb_response_or_None)
 _max_distance_by_hex = {}  # hex -> farthest distance_km ever recorded for that aircraft
@@ -806,7 +817,7 @@ def kiosk():
 def api_status():
     with _lock:
         last_poll = _state["last_poll_success_epoch"]
-        antenna_connected = last_poll is not None and (time.time() - last_poll) < ANTENNA_TIMEOUT_SECONDS
+        antenna_connected = last_poll is not None and (time.time() - last_poll) < get_antenna_timeout_seconds()
 
         now_utc_epoch = time.time()
         now_local = datetime.now(get_timezone())
@@ -843,7 +854,7 @@ def api_status():
 def api_matrix():
     with _lock:
         last_poll = _state["last_poll_success_epoch"]
-        antenna_connected = last_poll is not None and (time.time() - last_poll) < ANTENNA_TIMEOUT_SECONDS
+        antenna_connected = last_poll is not None and (time.time() - last_poll) < get_antenna_timeout_seconds()
         return jsonify(matrix.build_matrix_response(_state, antenna_connected))
 
 
