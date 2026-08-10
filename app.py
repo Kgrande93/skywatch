@@ -122,10 +122,25 @@ def get_antenna_timeout_seconds():
     poll cycle of silence, or it flips to disconnected between every poll
     even when everything is working - which is exactly what happened with
     OpenSky's ~237s anonymous-tier interval against a fixed 20s timeout.
-    Scales with whatever the current poll interval actually is, with a
-    floor at the configured/default value for fast local polling."""
+
+    The right margin isn't the same for every source, though:
+
+    - Local antenna: readsb on the LAN, low latency, no external moving
+      parts. A missed poll here is more likely a real problem worth
+      surfacing quickly, so keep a tight margin.
+    - OpenSky (own or area): depends on the public internet and a
+      third-party API with normal jitter, occasional slow responses, and
+      rate-limit retries. A single slightly-slow round trip shouldn't
+      flip the indicator, so it gets a more generous margin - a bigger
+      multiple of the interval, plus a flat grace period on top so short
+      intervals (e.g. 10s for "own receiver") aren't punished for one
+      minor hiccup.
+    """
+    source = settings_module.get_settings().get("data_source", "local")
     interval = get_poll_interval_seconds()
-    return max(ANTENNA_TIMEOUT_SECONDS_ENV_DEFAULT, int(interval * 2.5))
+    if source == "local":
+        return max(ANTENNA_TIMEOUT_SECONDS_ENV_DEFAULT, int(interval * 2.5))
+    return max(ANTENNA_TIMEOUT_SECONDS_ENV_DEFAULT, int(interval * 3) + 15)
 _callsign_cache = {}  # callsign -> (expiry_ts, adsbdb_response_or_None)
 _aircraft_cache = {}  # hex -> (expiry_ts, adsbdb_response_or_None)
 _max_distance_by_hex = {}  # hex -> farthest distance_km ever recorded for that aircraft
