@@ -89,6 +89,17 @@ sudo chown skywatch:skywatch /var/lib/skywatch
 git clone https://github.com/Kgrande93/skywatch.git /opt/skywatch
 sudo chown -R skywatch:skywatch /opt/skywatch
 
+# Lets the admin panel's automatic updates (see "Updates" below) - or
+# anyone running a manual `git pull` as root - both work without ever
+# hitting a permission error. setgid on every directory makes new files
+# git creates inherit the skywatch group no matter who created them, and
+# core.sharedRepository=group makes git write them group-writable. Do
+# this once, right after cloning, and it never needs revisiting - not
+# even by someone who forgets to `sudo -u skywatch` later.
+sudo chmod -R g+rwX /opt/skywatch
+sudo find /opt/skywatch -type d -exec chmod g+s {} \;
+sudo -u skywatch git -C /opt/skywatch config core.sharedRepository group
+
 cd /opt/skywatch
 sudo -u skywatch python3 -m venv venv
 sudo -u skywatch venv/bin/pip install -r requirements.txt
@@ -148,6 +159,16 @@ require editing `skywatch.service` and restarting the service by hand:
   by both this admin panel and the on-screen displays (Norwegian or
   English - one shared setting, not per-visitor, since a wall-mounted
   display has no one to individually prefer a language)
+- **Advanced** - port and state-file path (rarely changed, requires a
+  service restart to take effect either way)
+- **Updates** - optional automatic nightly `git pull` (off by default),
+  or a "check for updates now" button for a manual pull any time. Applies
+  new commits and restarts itself automatically - no `systemctl` access
+  needed, since it re-execs its own process in place. Requires the
+  shared-repository permission setup from the install steps above; without
+  it, a `git pull` run as a different user (e.g. `root`, by habit) will
+  leave files this feature can't write to, and it'll report a permission
+  error instead of updating
 
 **Setup**: just visit `http://<host-ip>:5000/admin` on a fresh install - if
 no password is configured yet, you'll land on a one-time setup screen to
