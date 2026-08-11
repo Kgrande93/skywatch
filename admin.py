@@ -207,6 +207,8 @@ def save_settings():
         "timezone": form.get("timezone", "").strip() or None,
         "port": int(form["port"]) if form.get("port", "").strip() else None,
         "state_file": form.get("state_file", "").strip() or None,
+        "auto_update_enabled": form.get("auto_update_enabled") == "on",
+        "auto_update_hour": int(form.get("auto_update_hour", 3)),
     }
     # Only overwrite the secret if a new one was actually typed - the
     # dashboard shows a masked placeholder, not the real value, so an
@@ -223,6 +225,18 @@ def save_settings():
     if changes["ntfy_topic"]:
         import ntfy_client
         ntfy_client.start_subscriber(changes["ntfy_topic"])
+    return redirect(url_for("admin.dashboard"))
+
+
+@admin_bp.route("/check-update", methods=["POST"])
+@login_required
+def check_update():
+    import ota_updater
+    ota_updater.check_and_apply(manual=True)
+    # If an update was applied, the process re-execs itself a couple
+    # seconds later - this response still makes it back to the browser
+    # first, and the redirect below will simply hit the new process
+    # once it's back up (or the old one, if no update was found).
     return redirect(url_for("admin.dashboard"))
 
 

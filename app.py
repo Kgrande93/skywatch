@@ -17,6 +17,7 @@ import ntfy_client
 import matrix
 import i18n
 import opensky_client
+import ota_updater
 from admin import admin_bp
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -103,6 +104,7 @@ app.register_blueprint(admin_bp)
 _settings = settings_module.get_settings()
 if _settings.get("ntfy_topic"):
     ntfy_client.start_subscriber(_settings["ntfy_topic"])
+ota_updater.start_scheduler()
 
 # ---------------------------------------------------------------------------
 # State

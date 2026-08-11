@@ -97,6 +97,7 @@ document.getElementById('introDismiss').addEventListener('click', () => {
     <button type="button" class="tab-btn" data-tab="notif">{{ t.admin_notifications }}</button>
     <button type="button" class="tab-btn" data-tab="display">{{ t.admin_display }}</button>
     <button type="button" class="tab-btn" data-tab="advanced">{{ t.admin_advanced }}</button>
+    <button type="button" class="tab-btn" data-tab="updates">{{ t.admin_updates }}</button>
     <button type="button" class="tab-btn" data-tab="password">{{ t.admin_password_section }}</button>
   </div>
 
@@ -218,6 +219,36 @@ document.getElementById('introDismiss').addEventListener('click', () => {
 
     <button type="submit">{{ t.admin_save }}</button>
   </form>
+
+  <div class="tab-panel" id="tab-updates">
+    <form method="post" action="{{ url_for('admin.save_settings') }}">
+      <fieldset>
+        <div class="checkbox-row" style="margin-top:0">
+          <input type="checkbox" name="auto_update_enabled" {% if settings.auto_update_enabled %}checked{% endif %}>
+          <label style="margin:0">{{ t.admin_auto_update_enabled }}</label>
+        </div>
+        <label>{{ t.admin_update_hour }}</label>
+        <select name="auto_update_hour">
+          {% for h in range(24) %}
+          <option value="{{ h }}" {% if (settings.auto_update_hour or 3) == h %}selected{% endif %}>{{ '%02d:00' % h }}</option>
+          {% endfor %}
+        </select>
+        <div class="field-note">{{ t.admin_update_note }}</div>
+      </fieldset>
+      <button type="submit">{{ t.admin_save }}</button>
+    </form>
+
+    <form method="post" action="{{ url_for('admin.check_update') }}" style="margin-top:14px">
+      <button type="submit">{{ t.admin_check_update_now }}</button>
+    </form>
+
+    {% if settings.last_update_check %}
+    <div class="field-note" style="margin-top:14px">
+      {{ t.admin_last_checked }}: {{ settings.last_update_status }} &mdash; {{ settings.last_update_message }}
+      {% if settings.last_update_commit %}({{ settings.last_update_commit }}){% endif %}
+    </div>
+    {% endif %}
+  </div>
 
   <div class="tab-panel" id="tab-password">
     <form method="post" action="{{ url_for('admin.change_password') }}">

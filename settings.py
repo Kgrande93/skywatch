@@ -35,6 +35,12 @@ DEFAULTS = {
     "timezone": None,          # falls back to TIMEZONE env var (default Europe/Oslo) when None
     "port": None,              # falls back to PORT env var (default 5000) when None - requires a restart to take effect
     "state_file": None,        # falls back to STATE_FILE env var when None - requires a restart to take effect
+    "auto_update_enabled": False,
+    "auto_update_hour": 3,      # 0-23, local time, when the nightly check runs
+    "last_update_check": None,
+    "last_update_status": None,   # "up_to_date" | "updated" | "error"
+    "last_update_message": None,
+    "last_update_commit": None,
     "ntfy_topic": "",
     "ntfy_server": "",  # e.g. https://ntfy.grandedata.no - falls back to https://ntfy.sh when empty
     "ntfy_messages_enabled": False,
