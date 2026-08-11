@@ -325,16 +325,31 @@ function updateEstimate(){
   latInput.value = c.lat.toFixed(6);
   lonInput.value = c.lng.toFixed(6);
 
+  document.getElementById('statInterval').textContent = '…';
+  document.getElementById('statCredits').textContent = '…';
+  document.getElementById('statArea').textContent = '…';
+
   fetch("{{ url_for('admin.credit_estimate') }}", {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ center_lat: c.lat, center_lon: c.lng, radius_km: radiusKm, tier: tierSelect.value })
-  }).then(r => r.json()).then(d => {
-    if (d.error) return;
+  }).then(r => {
+    if (!r.ok) throw new Error('Server returned ' + r.status);
+    return r.json();
+  }).then(d => {
+    if (d.error) throw new Error(d.error);
     document.getElementById('statArea').textContent = d.area_km2.toLocaleString();
     document.getElementById('statCredits').textContent = d.credits_per_call;
     document.getElementById('statInterval').textContent = d.recommended_interval_seconds;
     warning.classList.toggle('show', d.over_recommended);
-  }).catch(() => {});
+  }).catch(err => {
+    // Previously failed silently here, leaving stale numbers on screen
+    // with no indication anything was wrong - now it's visible instead
+    // of looking like the calculator just stopped responding.
+    document.getElementById('statInterval').textContent = 'err';
+    document.getElementById('statCredits').textContent = 'err';
+    document.getElementById('statArea').textContent = 'err';
+    console.error('credit-estimate failed:', err);
+  });
 }
 
 const dataSourceSelect = document.querySelector('select[name="data_source"]');
