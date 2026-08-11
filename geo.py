@@ -15,7 +15,10 @@ CREDIT_TIERS = [
     (float("inf"), 4),
 ]
 
-RECOMMENDED_MAX_RADIUS_KM = 25  # sensible default for a "my local area" view
+RECOMMENDED_MAX_RADIUS_KM = 25  # only used as the *default* slider position - never
+                                # for the warning threshold, since that must track the
+                                # real credit-cost boundary, which varies by latitude
+                                # (see credits_for_area) and has nothing to do with 25
 
 
 def radius_to_bbox(center_lat, center_lon, radius_km):
@@ -57,5 +60,7 @@ def estimate(center_lat, center_lon, radius_km):
         "area_sq_deg": round(area, 2),
         "area_km2": area_km2,
         "credits_per_call": credits,
-        "over_recommended": radius_km > RECOMMENDED_MAX_RADIUS_KM,
+        "over_recommended": credits > 1,  # warn only once it actually costs more,
+                                            # not at an arbitrary km value unrelated
+                                            # to the real (latitude-dependent) threshold
     }

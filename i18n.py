@@ -110,13 +110,12 @@ STRINGS = {
         "admin_confirm_password": "Bekreft nytt passord",
         "admin_change_password": "Bytt passord",
         "admin_area_warning": (
-            "Du har valgt et større område enn anbefalte 25 km radius. "
-            "Dette koster flere kreditter per oppdatering, som betyr at "
-            "skjermen oppdateres sjeldnere for at den daglige kvoten skal "
-            "vare hele døgnet. For de fleste lokale bruksområder dekker "
-            "25 km allerede en god radius \u2014 et større område hjelper "
-            "hovedsakelig hvis du vil fange opp trafikk lenger unna i "
-            "høy høyde."
+            "Dette området krysser inn i et dyrere kredittnivå hos OpenSky "
+            "(arealet er nå over 25 kvadratgrader — hvor mange km radius "
+            "det tilsvarer varierer med hvor i verden du er). Det koster "
+            "flere kreditter per oppdatering, som betyr sjeldnere "
+            "oppdatering av skjermen for at den daglige kvoten skal vare "
+            "hele døgnet."
         ),
         "admin_intro_title": "Velkommen til Skywatch Admin",
         "admin_intro_body": (
@@ -217,13 +216,12 @@ STRINGS = {
         "admin_confirm_password": "Confirm new password",
         "admin_change_password": "Change password",
         "admin_area_warning": (
-            "You've selected a larger area than the recommended 25 km "
-            "radius. This costs more credits per update, which means the "
-            "display will refresh less often to make your daily quota "
-            "last a full day. For most local flight-spotting use, 25 km "
-            "already covers a generous radius \u2014 a bigger area mainly "
-            "helps if you want to catch high-altitude traffic passing "
-            "further out."
+            "This area crosses into a more expensive OpenSky credit tier "
+            "(the area is now over 25 square degrees - how many km of "
+            "radius that corresponds to varies depending on where in the "
+            "world you are). It costs more credits per update, meaning "
+            "the display refreshes less often to make your daily quota "
+            "last a full day."
         ),
         "admin_intro_title": "Welcome to Skywatch Admin",
         "admin_intro_body": (
