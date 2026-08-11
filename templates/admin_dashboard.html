@@ -405,6 +405,18 @@ slider.addEventListener('input', updateEstimate);
 tierSelect.addEventListener('change', updateEstimate);
 map.on('click', (e) => { marker.setLatLng(e.latlng); updateEstimate(); });
 
+// Leaflet can't measure its container correctly while it's inside a
+// hidden (display:none) tab panel - if "Area" isn't the tab that's
+// visible on page load, the map only renders whatever corner it guessed
+// at wrongly. Recalculating the size every time this tab is actually
+// shown fixes it regardless of which tab loaded first.
+document.querySelector('.tab-btn[data-tab="area"]').addEventListener('click', () => {
+  setTimeout(() => map.invalidateSize(), 60);
+});
+if (startTab === 'area') {
+  setTimeout(() => map.invalidateSize(), 60);
+}
+
 function applyTypedLatLon(){
   const lat = parseFloat(latInput.value), lon = parseFloat(lonInput.value);
   if (isNaN(lat) || isNaN(lon)) return;
