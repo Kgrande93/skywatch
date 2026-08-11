@@ -41,6 +41,8 @@ DEFAULTS = {
     "last_update_status": None,   # "up_to_date" | "updated" | "error"
     "last_update_message": None,
     "last_update_commit": None,
+    "update_available": False,
+    "available_commit": None,
     "ntfy_topic": "",
     "ntfy_server": "",  # e.g. https://ntfy.grandedata.no - falls back to https://ntfy.sh when empty
     "ntfy_messages_enabled": False,

@@ -242,10 +242,27 @@ document.getElementById('introDismiss').addEventListener('click', () => {
       <button type="submit">{{ t.admin_check_update_now }}</button>
     </form>
 
+    {% if settings.update_available %}
+    <form method="post" action="{{ url_for('admin.apply_update') }}" style="margin-top:10px">
+      <div class="warning show" style="margin-bottom:0">
+        {{ t.admin_update_available.replace('{commit}', settings.available_commit or '?') }}
+      </div>
+      <button type="submit">{{ t.admin_apply_update_now }}</button>
+    </form>
+    {% endif %}
+
     {% if settings.last_update_check %}
     <div class="field-note" style="margin-top:14px">
-      {{ t.admin_last_checked }}: {{ settings.last_update_status }} &mdash; {{ settings.last_update_message }}
-      {% if settings.last_update_commit %}({{ settings.last_update_commit }}){% endif %}
+      {{ t.admin_last_checked }}:
+      {% if settings.last_update_status == 'up_to_date' %}
+        {{ t.admin_update_status_up_to_date }}
+      {% elif settings.last_update_status == 'update_available' %}
+        {{ t.admin_update_available.replace('{commit}', settings.available_commit or '?') }}
+      {% elif settings.last_update_status == 'updated' %}
+        {{ t.admin_update_status_updated.replace('{commit}', settings.last_update_commit or '?') }}
+      {% else %}
+        {{ t.admin_update_status_error }} &mdash; {{ settings.last_update_message }}
+      {% endif %}
     </div>
     {% endif %}
   </div>

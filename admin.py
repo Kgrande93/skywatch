@@ -232,11 +232,19 @@ def save_settings():
 @login_required
 def check_update():
     import ota_updater
-    ota_updater.check_and_apply(manual=True)
+    ota_updater.check_only()
+    return redirect(url_for("admin.dashboard"))
+
+
+@admin_bp.route("/apply-update", methods=["POST"])
+@login_required
+def apply_update():
+    import ota_updater
+    ota_updater.apply_update()
     # If an update was applied, the process re-execs itself a couple
     # seconds later - this response still makes it back to the browser
     # first, and the redirect below will simply hit the new process
-    # once it's back up (or the old one, if no update was found).
+    # once it's back up.
     return redirect(url_for("admin.dashboard"))
 
 

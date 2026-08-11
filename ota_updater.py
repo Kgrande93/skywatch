@@ -30,21 +30,65 @@ def _run(cmd, timeout=60):
     return subprocess.run(cmd, cwd=REPO_DIR, capture_output=True, text=True, timeout=timeout)
 
 
-def check_and_apply(manual=False):
-    """Runs one update check/apply cycle. Returns a status dict describing
-    what happened - used both by the nightly scheduler and the admin
-    panel's manual button."""
-    result = {"checked_at": time.time(), "manual": manual, "status": "error", "message": "", "commit": None}
+def _current_branch():
+    return _run(["git", "rev-parse", "--abbrev-ref", "HEAD"]).stdout.strip() or "main"
 
+
+def check_only():
+    """Fetches and compares against origin, but never merges or restarts -
+    used by the admin panel's manual "check for updates" button so an
+    update needs a separate, deliberate "apply" click rather than
+    happening the instant someone clicks check."""
+    result = {"checked_at": time.time(), "status": "error", "message": "",
+              "update_available": False, "available_commit": None}
+    try:
+        current = _run(["git", "rev-parse", "HEAD"])
+        if current.returncode != 0:
+            result["message"] = "Not a git repository, or git isn't available"
+            _save_check_result(result)
+            return result
+
+        branch = _current_branch()
+        fetch = _run(["git", "fetch", "--quiet", "origin", branch])
+        if fetch.returncode != 0:
+            result["message"] = f"git fetch failed: {fetch.stderr.strip()[:200]}"
+            _save_check_result(result)
+            return result
+
+        remote = _run(["git", "rev-parse", f"origin/{branch}"])
+        current_hash = current.stdout.strip()
+        remote_hash = remote.stdout.strip()
+
+        if current_hash == remote_hash:
+            result["status"] = "up_to_date"
+            result["message"] = "Already up to date"
+        else:
+            result["status"] = "update_available"
+            result["update_available"] = True
+            result["available_commit"] = remote_hash[:8]
+            result["message"] = f"Update available: {current_hash[:8]} -> {remote_hash[:8]}"
+
+        _save_check_result(result)
+        return result
+
+    except Exception as e:
+        result["message"] = f"Unexpected error: {e}"
+        _save_check_result(result)
+        log.exception("Update check failed")
+        return result
+
+
+def apply_update():
+    """Actually pulls and applies the update that a prior check_only()
+    found - called from the admin panel's "Apply update" button, or
+    directly by check_and_apply() for the unattended nightly run."""
+    result = {"checked_at": time.time(), "status": "error", "message": "", "commit": None}
     try:
         before = _run(["git", "rev-parse", "HEAD"])
-        if before.returncode != 0:
-            result["message"] = "Not a git repository, or git isn't available"
-            _save_result(result)
-            return result
         before_hash = before.stdout.strip()
+        branch = _current_branch()
 
-        fetch = _run(["git", "fetch", "--quiet"])
+        fetch = _run(["git", "fetch", "--quiet", "origin", branch])
         if fetch.returncode != 0:
             result["message"] = f"git fetch failed: {fetch.stderr.strip()[:200]}"
             _save_result(result)
@@ -53,9 +97,9 @@ def check_and_apply(manual=False):
         # --ff-only fails safely (no auto-merge, no conflicts) if the
         # local checkout has diverged - that needs a human to look at it
         # rather than risk an automatic merge on a running server.
-        pull = _run(["git", "pull", "--ff-only", "--quiet"])
-        if pull.returncode != 0:
-            result["message"] = f"git pull failed (diverged or local changes?): {pull.stderr.strip()[:200]}"
+        merge = _run(["git", "merge", "--ff-only", f"origin/{branch}"])
+        if merge.returncode != 0:
+            result["message"] = f"git merge failed (diverged or local changes?): {merge.stderr.strip()[:200]}"
             _save_result(result)
             return result
 
@@ -92,8 +136,14 @@ def check_and_apply(manual=False):
     except Exception as e:
         result["message"] = f"Unexpected error: {e}"
         _save_result(result)
-        log.exception("Update check failed")
+        log.exception("Update apply failed")
         return result
+
+
+def check_and_apply(manual=False):
+    """Used only by the unattended nightly scheduler - checks and applies
+    in one step, since there's no one there to click a confirmation."""
+    return apply_update()
 
 
 def _restart():
@@ -106,6 +156,18 @@ def _save_result(result):
         "last_update_status": result["status"],
         "last_update_message": result["message"],
         "last_update_commit": result["commit"],
+        "update_available": False,
+        "available_commit": None,
+    })
+
+
+def _save_check_result(result):
+    settings_module.update_settings({
+        "last_update_check": result["checked_at"],
+        "last_update_status": result["status"],
+        "last_update_message": result["message"],
+        "update_available": result["update_available"],
+        "available_commit": result["available_commit"],
     })
 
 
